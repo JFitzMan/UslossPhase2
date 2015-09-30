@@ -64,6 +64,7 @@ int start1(char *arg)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("start1(): fork'ing start2 process\n");
     int kid_pid = fork1("start2", start2, 0, 4 * USLOSS_MIN_STACK, 1);
+    int status;
     if ( join(&status) != kid_pid ) {
         USLOSS_Console("start2(): join returned something other than ");
         USLOSS_Console("start2's pid\n");

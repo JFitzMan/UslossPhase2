@@ -24,6 +24,8 @@ int debugflag2 = 0;
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
 
+
+
 // also need array of mail slots, array of function ptrs to system call 
 // handlers, ...
 
@@ -47,7 +49,7 @@ int start1(char *arg)
 
     // check kernel mode
     if (!inKernelMode("start1"))
-      USLOSS_Console("Kernel Error: Not in kernel mode, may not run %s()\n", procName);
+      USLOSS_Console("Kernel Error: Not in kernel mode, may not run\n");
     
     // Disable interrupts
     disableInterrupts();
@@ -57,16 +59,16 @@ int start1(char *arg)
     // allocate mailboxes for interrupt handlers.  Etc... 
 
     enableInterrupts();
-
+    
     // Create a process for start2, then block on a join until start2 quits
     if (DEBUG2 && debugflag2)
         USLOSS_Console("start1(): fork'ing start2 process\n");
-    kid_pid = fork1("start2", start2, NULL, 4 * USLOSS_MIN_STACK, 1);
+    int kid_pid = fork1("start2", start2, 0, 4 * USLOSS_MIN_STACK, 1);
     if ( join(&status) != kid_pid ) {
         USLOSS_Console("start2(): join returned something other than ");
         USLOSS_Console("start2's pid\n");
     }
-
+    
     return 0;
 } /* start1 */
 

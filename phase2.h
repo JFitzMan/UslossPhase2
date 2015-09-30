@@ -37,6 +37,9 @@ extern int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_max_size);
  */
 extern int waitdevice(int type, int unit, int *status);
 
+//checks to see if the processor is in kernel mode
+int inKernelMode(char *procName);
+
 /*  The sysargs structure */
 typedef struct sysargs
 {

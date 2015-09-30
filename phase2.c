@@ -108,3 +108,19 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
 } /* MboxReceive */
+
+  
+/*
+ *checks the PSR for kernel mode
+ *returns true in if its in kernel mode, and false if not
+*/
+int inKernelMode(char *procName){
+    if( (USLOSS_PSR_CURRENT_MODE & USLOSS_PsrGet()) == 0 ) {
+      USLOSS_Console("Kernel Error: Not in kernel mode, may not run %s()\n", procName);
+      USLOSS_Halt(1);
+      return 0;
+    }
+    else{
+      return 1;
+    }
+}

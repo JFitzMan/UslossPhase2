@@ -109,7 +109,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
 } /* MboxReceive */
 
-  
+
 /*
  *checks the PSR for kernel mode
  *returns true in if its in kernel mode, and false if not
@@ -124,3 +124,35 @@ int inKernelMode(char *procName){
       return 1;
     }
 }
+
+/*
+ * Disables the interrupts.
+ */
+void disableInterrupts()
+{
+    /* turn the interrupts OFF iff we are in kernel mode */
+    if( (USLOSS_PSR_CURRENT_MODE & USLOSS_PsrGet()) == 0 ) {
+        //not in kernel mode
+        USLOSS_Console("Kernel Error: Not in kernel mode, may not ");
+        USLOSS_Console("disable interrupts\n");
+        USLOSS_Halt(1);
+    } else
+        /* We ARE in kernel mode */
+        USLOSS_PsrSet( USLOSS_PsrGet() & ~USLOSS_PSR_CURRENT_INT );
+} /* disableInterrupts */
+
+/*
+ * Enables the interrupts.
+ */
+void enableInterrupts()
+{
+    /* turn the interrupts ON iff we are in kernel mode */
+    if( (USLOSS_PSR_CURRENT_MODE & USLOSS_PsrGet()) == 0 ) {
+        //not in kernel mode
+        USLOSS_Console("Kernel Error: Not in kernel mode, may not ");
+        USLOSS_Console("enable interrupts\n");
+        USLOSS_Halt(1);
+    } else
+        /* We ARE in kernel mode */
+        USLOSS_PsrSet( USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT );
+} /* enableInterrupts */

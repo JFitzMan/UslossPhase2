@@ -40,6 +40,10 @@ extern int waitdevice(int type, int unit, int *status);
 //checks to see if the processor is in kernel mode
 int inKernelMode(char *procName);
 
+//enables/disables interrupts
+void disableInterrupts();
+void enableInterrupts();
+
 /*  The sysargs structure */
 typedef struct sysargs
 {

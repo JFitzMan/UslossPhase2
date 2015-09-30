@@ -45,8 +45,10 @@ int start1(char *arg)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("start1(): at beginning\n");
 
-    check_kernel_mode("start1");
-
+    // check kernel mode
+    if (!inKernelMode("start1"))
+      USLOSS_Console("Kernel Error: Not in kernel mode, may not run %s()\n", procName);
+    
     // Disable interrupts
     disableInterrupts();
 

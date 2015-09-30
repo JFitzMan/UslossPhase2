@@ -3,6 +3,7 @@
 
 typedef struct mailSlot *slotPtr;
 typedef struct mailbox   mailbox;
+typedef struct proctStruct proctStruct;
 typedef struct mboxProc *mboxProcPtr;
 
 struct mailbox {
@@ -14,6 +15,11 @@ struct mailSlot {
     int       mboxID;
     int       status;
     // other items as needed...
+};
+
+struct proctStruct{
+    int       pid;
+    int       status;
 };
 
 struct psrBits {

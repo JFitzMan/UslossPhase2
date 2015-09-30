@@ -24,9 +24,13 @@ int debugflag2 = 0;
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
 
+// the process table
+proctStruct processTable[MAXPROC];
 
+//the mail slots
+slotPtr MailSlotTable[MAXSLOTS];
 
-// also need array of mail slots, array of function ptrs to system call 
+// also need array of function ptrs to system call 
 // handlers, ...
 
 
@@ -55,6 +59,18 @@ int start1(char *arg)
     disableInterrupts();
 
     // Initialize the mail box table, slots, & other data structures.
+
+    //initialize mailbox table
+    int i;
+    for (i = 0; i < MAXMBOX; ++i){
+      MailBoxTable[i].mboxID = -1;
+    }
+
+    // initialize mail slots
+    for (i = 0; i < MAXSLOTS; ++i){
+      MailSlotTable[i].mboxID = -1;
+      MailSlotTable[i].status = -1;
+    }
     // Initialize USLOSS_IntVec and system call handlers,
     // allocate mailboxes for interrupt handlers.  Etc... 
 

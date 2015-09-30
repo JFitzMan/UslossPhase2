@@ -8,13 +8,14 @@ typedef struct mboxProc *mboxProcPtr;
 
 struct mailbox {
     int       mboxID;
-    // other items as needed...
+    int       numSlots;
+    slotPtr   firstSlot;
 };
 
 struct mailSlot {
     int       mboxID;
     int       status;
-    // other items as needed...
+    slotPtr   nextSlot;
 };
 
 struct proctStruct{

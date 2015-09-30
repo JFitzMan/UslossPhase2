@@ -115,6 +115,7 @@ int MboxCreate(int slots, int slot_size)
   //find the next avaliable mailbox
   //right now it starts at 7, but I do not know why exactly
   //so this loops around the box starting at 7. Check out test01
+  //what's weird is this still works for test02. Maybe a bug on patricks end
   int i;
   int newMailBoxID = -1;
   for( i=nextMailBoxID; i < MAXMBOX; i++){

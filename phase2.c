@@ -65,13 +65,14 @@ int start1(char *arg)
     //initialize mailbox table
     int i;
     for (i = 0; i < MAXMBOX; i++){
-      MailBoxTable[i].mboxID = -1;
+      MailBoxTable[i].mboxID = EMPTY;
     }
 
     /*
     // initialize mail slots
+    //there are still bugs in this for some reason, no idea what to do
     for (i = 0; i < MAXSLOTS; i++){
-      MailSlotTable[i] = malloc(sizeof(struct mailSlot));
+      MailSlotTable[i] = something 
     }
     */
 
@@ -119,7 +120,7 @@ int MboxCreate(int slots, int slot_size)
   int i;
   int newMailBoxID = -1;
   for( i=nextMailBoxID; i < MAXMBOX; i++){
-    if (MailBoxTable[i].mboxID == -1){
+    if (MailBoxTable[i].mboxID == EMPTY){
       newMailBoxID = i;
       nextMailBoxID++;
       break;
@@ -137,6 +138,7 @@ int MboxCreate(int slots, int slot_size)
   MailBoxTable[newMailBoxID].mboxID = newMailBoxID;
   MailBoxTable[newMailBoxID].numSlots = slots;
   MailBoxTable[newMailBoxID].slotSize = slot_size;
+  MailBoxTable[newMailBoxID].slotsInUse = 0;
   MailBoxTable[newMailBoxID].firstSlot = NULL;
   if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxCreate(): initializing new mailbox\n");
@@ -159,6 +161,23 @@ int MboxCreate(int slots, int slot_size)
    ----------------------------------------------------------------------- */
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 {
+  //check that arguments are valid
+  if (msg_size > MAX_MESSAGE){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): msg is too large!\n");
+    return -1;
+  }else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): mbox ID does not exist!!\n");
+    return -1;
+  }
+
+  //check to make sure the mailbox has enough slots.
+  if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
+    USLOSS_Console("No slots left in mailbox %d. Halting...\n", mbox_id);
+    USLOSS_Halt(1);
+  }
+  
 } /* MboxSend */
 
 

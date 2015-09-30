@@ -1,26 +1,30 @@
 
 #define DEBUG2 1
+#define NULL 0
 
 typedef struct mailSlot *slotPtr;
 typedef struct mailbox   mailbox;
-typedef struct proctStruct proctStruct;
 typedef struct mboxProc *mboxProcPtr;
 
 struct mailbox {
-    int       mboxID;
-    int       numSlots;
-    slotPtr   firstSlot;
+    int          mboxID;
+    int          numSlots;
+    int          slotSize;
+    slotPtr      firstSlot;
 };
 
 struct mailSlot {
     int       mboxID;
     int       status;
+    char*     message;
     slotPtr   nextSlot;
 };
 
-struct proctStruct{
+struct mboxProc{
     int       pid;
-    int       status;
+    //pointer to next proc
+    //place to store message directly by a mailbox
+    //probably a few more, but less than phase 1
 };
 
 struct psrBits {

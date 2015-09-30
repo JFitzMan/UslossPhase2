@@ -25,10 +25,12 @@ int debugflag2 = 0;
 mailbox MailBoxTable[MAXMBOX];
 
 // the process table
-proctStruct processTable[MAXPROC];
+mboxProcPtr processTable[MAXPROC];
 
 //the mail slots
 slotPtr MailSlotTable[MAXSLOTS];
+
+int nextMailBoxID = 7;
 
 // also need array of function ptrs to system call 
 // handlers, ...
@@ -58,19 +60,21 @@ int start1(char *arg)
     // Disable interrupts
     disableInterrupts();
 
-    // Initialize the mail box table, slots, & other data structures.
+
 
     //initialize mailbox table
     int i;
-    for (i = 0; i < MAXMBOX; ++i){
+    for (i = 0; i < MAXMBOX; i++){
       MailBoxTable[i].mboxID = -1;
     }
 
+    /*
     // initialize mail slots
-    for (i = 0; i < MAXSLOTS; ++i){
-      MailSlotTable[i].mboxID = -1;
-      MailSlotTable[i].status = -1;
+    for (i = 0; i < MAXSLOTS; i++){
+      MailSlotTable[i] = malloc(sizeof(struct mailSlot));
     }
+    */
+
     // Initialize USLOSS_IntVec and system call handlers,
     // allocate mailboxes for interrupt handlers.  Etc... 
 
@@ -101,6 +105,46 @@ int start1(char *arg)
    ----------------------------------------------------------------------- */
 int MboxCreate(int slots, int slot_size)
 {
+
+  //check to make sure slots or slot_size doesnt exceed constants
+  if (slots > MAXSLOTS || slot_size > MAX_MESSAGE){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxCreate(): Unable to create mmailbox, parameters too large!\n");
+    return -1;
+  }
+  //find the next avaliable mailbox
+  //right now it starts at 7, but I do not know why exactly
+  //so this loops around the box starting at 7. Check out test01
+  int i;
+  int newMailBoxID = -1;
+  for( i=nextMailBoxID; i < MAXMBOX; i++){
+    if (MailBoxTable[i].mboxID == -1){
+      newMailBoxID = i;
+      nextMailBoxID++;
+      break;
+    }
+  }
+
+  //if newMailBoxID=-1, return -1 to indicate that all mailboxes are in use
+  if (newMailBoxID == -1){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxCreate(): All mailboxes in use!\n");
+    return -1;
+  }
+
+  //initialize new mailbox
+  MailBoxTable[newMailBoxID].mboxID = newMailBoxID;
+  MailBoxTable[newMailBoxID].numSlots = slots;
+  MailBoxTable[newMailBoxID].slotSize = slot_size;
+  MailBoxTable[newMailBoxID].firstSlot = NULL;
+  if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxCreate(): initializing new mailbox\n");
+
+  //return mailBoxID
+  return newMailBoxID;
+
+
+
 } /* MboxCreate */
 
 

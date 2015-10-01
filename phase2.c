@@ -26,7 +26,7 @@ void addSlot(slotPtr front, slotPtr toAdd);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 1;
+int debugflag2 = 0;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -217,9 +217,10 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     //get new slot and add it to the list of mail slots
     slotPtr newSlot = getEmptySlot(msg_size, MailBoxTable[mbox_id].firstSlot, mbox_id);
     memcpy(newSlot->message, msg_ptr, msg_size);
+    MailBoxTable[mbox_id].firstSlot = newSlot;
     if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxSend(): New slot allocated and message copied\n");
-        USLOSS_Console("MboxSend(): Message in new slot: %s\n", newSlot->message);
+        USLOSS_Console("MboxSend(): Message in new slot: %s\n", MailBoxTable[mbox_id].firstSlot->message);
       }
 
   }
@@ -288,7 +289,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     free(toFree->message);
 
   }
-  return 0;
+  return MailBoxTable[mbox_id].slotSize;
 
 } /* MboxReceive */
 
@@ -392,6 +393,7 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
   }
   if (DEBUG2 && debugflag2)
         USLOSS_Console("getEmptySlot(): new slot created, total slots: %d\n", totalSlotsInUse);
+  MailBoxTable[i].firstSlot = newSlot;
   return newSlot;
 }
 

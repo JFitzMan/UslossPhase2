@@ -206,11 +206,9 @@ int MboxRelease(int mailboxID){
     }
     MailBoxTable[mailboxID].nextProcBlockedOnSend = NULL;
   }
-<<<<<<< HEAD
+
   //same thing as above, but for procs blocked on receive
-=======
-  //same thing as above, but for procs blocked on recieve
->>>>>>> 33583902799340ba2ea26d7cac1d689750403dc8
+
   if (MailBoxTable[mailboxID].nextBlockedProc != NULL){
     mboxProcPtr cur = MailBoxTable[mailboxID].nextBlockedProc;
     while (cur != NULL){

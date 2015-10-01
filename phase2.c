@@ -349,28 +349,27 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 		enableInterrupts();
 		return -1;
 	}
-	
-	//NOT DONE YET
+
 	//check to see if there are processes blocked on recieve
 	if (MailBoxTable[mbox_id].nextBlockedProc != NULL){
 		//place message directly in blocked procs message field 
 		if (DEBUG2 && debugflag2)
-			USLOSS_Console("MboxSend(): process waiting on recieve! Placing message in proc table slot..\n");
+			USLOSS_Console("MboxCondSend(): process waiting on recieve! Placing message in proc table slot...\n");
 		MailBoxTable[mbox_id].nextBlockedProc->message = malloc(msg_size);
 		MailBoxTable[mbox_id].nextBlockedProc->messageSize = msg_size;
-    MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
-    memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
-    if (DEBUG2 && debugflag2)
-        USLOSS_Console("MboxSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
-    unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
-    blockMe(12);
-    if (DEBUG2 && debugflag2)
-        USLOSS_Console("MboxSend(): Message sent successfully\n");
+		MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
+		memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
+		unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): Message sent successfully\n");
 	}
 	
 	//check to make sure system has enough slots left
 	else if (totalSlotsInUse >= MAXSLOTS){
 		USLOSS_Console("MBoxCondSend(): No slots left in system! Returning -2...\n");
+		enableInterrupts();
 		return -2;
 	}
 	//No slots left in Mailbox
@@ -379,12 +378,24 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 		addProcToBlockedList(&processTable[getpid()], mbox_id);
 		if (DEBUG2 && debugflag2)
 			USLOSS_Console("MboxCondSend(): No slots left! Returning -2...\n");
+			enableInterrupts();
 			return -2; 
+	}
+	else{ //get new slot and add it to the list of mail slots
+		slotPtr newSlot = getEmptySlot(msg_size, MailBoxTable[mbox_id].firstSlot, mbox_id);
+		memcpy(newSlot->message, msg_ptr, msg_size);
+		MailBoxTable[mbox_id].firstSlot = newSlot;
+		if (DEBUG2 && debugflag2){
+			USLOSS_Console("MboxCondSend(): New slot allocated and message copied\n");
+			USLOSS_Console("MboxCondSend(): Message in new slot: %s\n", MailBoxTable[mbox_id].firstSlot->message);
+		}
 	}
 	
 	enableInterrupts();
 	return 0; //message sent successfully
 }
+
+
 
 
 /*

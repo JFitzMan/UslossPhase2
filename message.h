@@ -48,6 +48,6 @@ union psrValues {
 #define EMPTY -1
 #define READY 1
 #define SEND_BLOCKED 2
-#define RECIEVE_BLOCKED 3
+#define RECEIVE_BLOCKED 3
 
 

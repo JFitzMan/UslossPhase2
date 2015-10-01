@@ -330,6 +330,13 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
   return newSlot;
 }
 
+/* ------------------------------------------------------------------------
+   Name - addSlot
+   Purpose - places new slot at the end of the specified slot list
+   Parameters - front of the list, slot to add
+   Returns - nothing
+   Side Effects - adds the slot into the end of the slot list specified by front.
+   ----------------------------------------------------------------------- */
 void addSlot(slotPtr front, slotPtr toAdd){
 
 }

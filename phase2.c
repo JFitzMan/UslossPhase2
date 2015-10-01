@@ -326,6 +326,59 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 
 } /* MboxReceive */
 
+int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
+	disableInterrupts();
+	processTable[getpid()].pid = getpid();
+
+	//check that arguments are valid
+	if (msg_size > MAX_MESSAGE){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): msg is too large!\n");
+		enableInterrupts();
+		return -1;
+	}else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): mbox ID does not exist!!\n");
+		enableInterrupts();
+		return -1;
+	}
+	
+	//NOT DONE YET
+	//check to see if there are processes blocked on recieve
+	if (MailBoxTable[mbox_id].nextBlockedProc != NULL){
+		//place message directly in blocked procs message field 
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxSend(): process waiting on recieve! Placing message in proc table slot..\n");
+		MailBoxTable[mbox_id].nextBlockedProc->message = malloc(msg_size);
+		MailBoxTable[mbox_id].nextBlockedProc->messageSize = msg_size;
+    MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
+    memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
+    unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
+    blockMe(12);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): Message sent successfully\n");
+	}
+	
+	//check to make sure system has enough slots left
+	else if (totalSlotsInUse >= MAXSLOTS){
+		USLOSS_Console("MBoxCondSend(): No slots left in system! Returning -2...\n");
+		return -2;
+	}
+	//No slots left in Mailbox
+	else if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
+		processTable[getpid()].status = SEND_BLOCKED;
+		addProcToBlockedList(&processTable[getpid()], mbox_id);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): No slots left! Returning -2...\n");
+			return -2; 
+	}
+	
+	enableInterrupts();
+	return 0; //message sent successfully
+}
+
 
 /*
  *checks the PSR for kernel mode

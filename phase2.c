@@ -371,24 +371,24 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     }
     //decrement slotsInUse
     MailBoxTable[mbox_id].slotsInUse--;
-    //free the box, grab the retunr value first
+    //free the box, grab the return value first
     toReturn = toFree->msg_size;
     toFree->mboxID = EMPTY;
     toFree->nextSlot = NULL;
     free(toFree->message);
     if (DEBUG2 && debugflag2)
-        USLOSS_Console("MmoxRecieve(): Freed allocated memory\n");
+        USLOSS_Console("MboxRecieve(): Freed allocated memory\n");
 
     //is there any procs waiting on block? If so, get their message sent and free them.
     if (MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL)
     {
       if (DEBUG2 && debugflag2)
-        USLOSS_Console("MmoxRecieve(): There is a process blocked on send, and we just freed a slot!\n");
+        USLOSS_Console("MboxRecieve(): There is a process blocked on send, and we just freed a slot!\n");
       MboxSend(mbox_id, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
       int pidToUnblock = MailBoxTable[mbox_id].nextProcBlockedOnSend->pid;
       if (MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc == NULL){
         if (DEBUG2 && debugflag2)
-          USLOSS_Console("MmoxRecieve(): No more procs blocked on send\n");
+          USLOSS_Console("MboxRecieve(): No more procs blocked on send\n");
         MailBoxTable[mbox_id].nextProcBlockedOnSend = NULL;
       }
       else{
@@ -448,22 +448,31 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 	}
 	//No slots left in Mailbox
 	else if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
-		processTable[getpid()].status = SEND_BLOCKED;
-		addProcToBlockedList(&processTable[getpid()], mbox_id);
 		if (DEBUG2 && debugflag2)
 			USLOSS_Console("MboxCondSend(): No slots left! Returning -2...\n");
 			enableInterrupts();
 			return -2; 
 	}
-	else{ //get new slot and add it to the list of mail slots
+	else{
+		//get new slot and add it to the list of mail slots
 		slotPtr newSlot = getEmptySlot(msg_size, mbox_id);
 		memcpy(newSlot->message, msg_ptr, msg_size);
-		MailBoxTable[mbox_id].firstSlot = newSlot;
-		if (DEBUG2 && debugflag2){
-			USLOSS_Console("MboxCondSend(): New slot allocated and message copied\n");
-			USLOSS_Console("MboxCondSend(): Message in new slot: %s\n", MailBoxTable[mbox_id].firstSlot->message);
+
+		if (MailBoxTable[mbox_id].firstSlot == NULL){
+			MailBoxTable[mbox_id].firstSlot = newSlot;
 		}
-	}
+		else{
+			slotPtr cur = MailBoxTable[mbox_id].firstSlot;
+			while (cur->nextSlot != NULL){
+				cur = cur->nextSlot;
+		}
+		cur->nextSlot = newSlot;
+    }
+
+    if (DEBUG2 && debugflag2){
+        USLOSS_Console("MboxCondSend(): New slot allocated and message copied\n");
+      }
+  }
 	
 	enableInterrupts();
 	return 0; //message sent successfully
@@ -522,8 +531,28 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
 		toFree->nextSlot = NULL;
 		free(toFree->message);
 		if (DEBUG2 && debugflag2)
-			USLOSS_Console("MmoxCondRecieve(): Freed allocated memory\n");
+			USLOSS_Console("MboxCondRecieve(): Freed allocated memory\n");
 	}
+	//is there any procs waiting on block? If so, get their message sent and free them.
+    if (MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL)
+    {
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxCondRecieve(): There is a process blocked on send, and we just freed a slot!\n");
+      MboxSend(mbox_id, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
+      int pidToUnblock = MailBoxTable[mbox_id].nextProcBlockedOnSend->pid;
+      if (MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc == NULL){
+        if (DEBUG2 && debugflag2)
+          USLOSS_Console("MboxCondRecieve(): No more procs blocked on send\n");
+        MailBoxTable[mbox_id].nextProcBlockedOnSend = NULL;
+      }
+      else{
+        MailBoxTable[mbox_id].nextProcBlockedOnSend = MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc;
+      }
+      unblockProc(pidToUnblock);
+    }
+
+  }
+	
 	
   enableInterrupts();
   return toReturn; 

@@ -19,6 +19,8 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id);
 int inKernelMode(char *procName);
 void disableInterrupts();
 void enableInterrupts();
+void addMessageSlot(void *msg_ptr, int mbox_id);
+slotPtr getEmptySlot();
 
 
 /* -------------------------- Globals ------------------------------------- */
@@ -122,7 +124,7 @@ int start1(char *arg)
    ----------------------------------------------------------------------- */
 int MboxCreate(int slots, int slot_size)
 {
-
+  disableInterrupts();
   //check to make sure slots or slot_size doesnt exceed constants
   if (slots > MAXSLOTS || slot_size > MAX_MESSAGE){
     if (DEBUG2 && debugflag2)
@@ -147,6 +149,7 @@ int MboxCreate(int slots, int slot_size)
   if (newMailBoxID == -1){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxCreate(): All mailboxes in use!\n");
+    enableInterrupts();
     return -1;
   }
 
@@ -160,6 +163,7 @@ int MboxCreate(int slots, int slot_size)
         USLOSS_Console("MboxCreate(): initializing new mailbox\n");
 
   //return mailBoxID
+  enableInterrupts();
   return newMailBoxID;
 
 
@@ -208,7 +212,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   1)Allocate slot 2)copy message 3)profit
   */
   else{
-    
+    addMessageSlot(msg_ptr, mbox_id);
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
@@ -298,3 +302,12 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
   }//end else
 
 }// addProcToBlockedList
+
+void addMessageSlot(void *msg_ptr, int mbox_id){
+  //no slots currently allocated
+
+}
+
+slotPtr getEmptySlot(){
+  
+}

@@ -32,7 +32,7 @@ mailbox MailBoxTable[MAXMBOX];
 struct mboxProc processTable[MAXPROC];
 
 //the mail slots
-slotPtr MailSlotTable[MAXSLOTS];
+struct mailSlot MailSlotTable[MAXSLOTS];
 
 int nextMailBoxID = 7;
 int totalSlotsInUse = 0;
@@ -82,13 +82,12 @@ int start1(char *arg)
     processTable[getpid()].pid = getpid();
     processTable[getpid()].status = READY;
 
-    /*
+    
     // initialize mail slots
-    //there are still bugs in this for some reason, no idea what to do
     for (i = 0; i < MAXSLOTS; i++){
-      MailSlotTable[i] = something 
+      MailSlotTable[i].mboxID = EMPTY; 
     }
-    */
+    
 
     // Initialize USLOSS_IntVec and system call handlers,
     // allocate mailboxes for interrupt handlers.  Etc... 
@@ -205,9 +204,11 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     addProcToBlockedList(&processTable[getpid()], mbox_id);
     blockMe(12);//something higher than 10, patrick will post which numbers display what soon
   }
-  //free slot in mailbox, copy message.
+  /*free slot in mailbox:
+  1)Allocate slot 2)copy message 3)profit
+  */
   else{
-
+    
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING

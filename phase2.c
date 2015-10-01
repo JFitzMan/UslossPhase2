@@ -21,8 +21,8 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id);
 int inKernelMode(char *procName);
 void disableInterrupts();
 void enableInterrupts();
-slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id);
-void addSlot(slotPtr front, slotPtr toAdd);
+slotPtr getEmptySlot(int size, int mbox_id);
+void addSlot(slotPtr *front, slotPtr toAdd);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -227,27 +227,61 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   //No slots left in Mailbox
   else if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
     processTable[getpid()].status = SEND_BLOCKED;
-    addProcToBlockedList(&processTable[getpid()], mbox_id);
+    //addProcToBlockedList(&processTable[getpid()], mbox_id);
+    processTable[getpid()].nextProc = NULL;
+
+    if (MailBoxTable[mbox_id].nextProcBlockedOnSend == NULL){
+      MailBoxTable[mbox_id].nextProcBlockedOnSend = &processTable[getpid()];
+    }
+    else{
+      mboxProcPtr cur = MailBoxTable[mbox_id].nextProcBlockedOnSend;
+      while (cur->nextProc != NULL){
+        cur = cur->nextProc;
+      }
+     cur->nextProc = &processTable[getpid()];
+    }
+
+    processTable[getpid()].message = malloc(msg_size);
+    processTable[getpid()].messageSize = msg_size;
+    processTable[getpid()].pid = getpid();
+    memcpy(processTable[getpid()].message, msg_ptr, msg_size);
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): No slots left! Blocking...\n");
     blockMe(12);//something higher than 10, patrick will post which numbers display what soon
   }
+
   /*free slot in mailbox:
   1)Allocate slot 2)copy message 3)profit
   */
   else{
+
+
     //get new slot and add it to the list of mail slots
-    slotPtr newSlot = getEmptySlot(msg_size, MailBoxTable[mbox_id].firstSlot, mbox_id);
+    slotPtr newSlot = getEmptySlot(msg_size, mbox_id);
     memcpy(newSlot->message, msg_ptr, msg_size);
-    MailBoxTable[mbox_id].firstSlot = newSlot;
+
+    if (MailBoxTable[mbox_id].firstSlot == NULL){
+      MailBoxTable[mbox_id].firstSlot = newSlot;
+    }
+    else{
+      slotPtr cur = MailBoxTable[mbox_id].firstSlot;
+      while (cur->nextSlot != NULL){
+        cur = cur->nextSlot;
+      }
+     cur->nextSlot = newSlot;
+    }
+
+
+
     if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxSend(): New slot allocated and message copied\n");
-        USLOSS_Console("MboxSend(): Message in new slot: %s\n", MailBoxTable[mbox_id].firstSlot->message);
       }
+
 
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
+
   enableInterrupts();
   //message sent successfully
   return 0;
@@ -302,7 +336,21 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     //unblock the sending process
     unblockProc(processTable[getpid()].pidOfMessageSender);
   }
-
+  //there is a message blocked on send because the mailbox is full!
+  /*
+  else if (MailBoxTable[mbox_id].slotsInUse == 0 && MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL){
+    //grab the message from the blocked proc and unblock it
+    if (DEBUG2 && debugflag2){
+        USLOSS_Console("MmoxRecieve(): There is a proc blocked on send! \n");
+        USLOSS_Console("MmoxRecieve(): It's message: %s \n", MailBoxTable[mbox_id].nextProcBlockedOnSend->message);
+      }
+    memcpy(msg_ptr, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
+    toReturn = MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize;
+    //MailBoxTable[mbox_id].nextProcBlockedOnSend = MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc;
+    free(MailBoxTable[mbox_id].nextProcBlockedOnSend->message);
+    unblockProc(MailBoxTable[mbox_id].nextProcBlockedOnSend->pid);
+  } 
+  */
   //there is a message to receive waiting in the box
   else{
     //copy the message from the slot, free the slot
@@ -312,9 +360,13 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 
     slotPtr toFree = MailBoxTable[mbox_id].firstSlot;
     if (MailBoxTable[mbox_id].firstSlot->nextSlot == NULL){
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): No more slots in slot list, mailbox is empty\n");
       MailBoxTable[mbox_id].firstSlot = NULL;
     }
     else{
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): Removing slot from slot list\n");
       MailBoxTable[mbox_id].firstSlot = MailBoxTable[mbox_id].firstSlot->nextSlot;
     }
     //decrement slotsInUse
@@ -325,7 +377,26 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     toFree->nextSlot = NULL;
     free(toFree->message);
     if (DEBUG2 && debugflag2)
-        USLOSS_Console("MmoxRecieve(): Freed allocared memory\n");
+        USLOSS_Console("MmoxRecieve(): Freed allocated memory\n");
+
+    //is there any procs waiting on block? If so, get their message sent and free them.
+    if (MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL)
+    {
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): There is a process blocked on send, and we just freed a slot!\n");
+      MboxSend(mbox_id, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
+      int pidToUnblock = MailBoxTable[mbox_id].nextProcBlockedOnSend->pid;
+      if (MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc == NULL){
+        if (DEBUG2 && debugflag2)
+          USLOSS_Console("MmoxRecieve(): No more procs blocked on send\n");
+        MailBoxTable[mbox_id].nextProcBlockedOnSend = NULL;
+      }
+      else{
+        MailBoxTable[mbox_id].nextProcBlockedOnSend = MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc;
+      }
+      unblockProc(pidToUnblock);
+    }
+
 
   }
   enableInterrupts();
@@ -413,7 +484,7 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
    Side Effects - increments totalSlotsInUse
                   updates the mailslot fields of the slot it's returning
    ----------------------------------------------------------------------- */
-slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
+slotPtr getEmptySlot(int size, int mbox_id){
   slotPtr newSlot = NULL;
   int i;
   for (i=0; i < MAXSLOTS; i++){
@@ -426,8 +497,6 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
       newSlot->nextSlot = NULL;
       newSlot->msg_size = size;
       newSlot->message = malloc(size);
-      //add new slot into mailbox slot list
-      addSlot(boxSlotList, newSlot);
       //increment total slots in use
       MailBoxTable[mbox_id].slotsInUse++;
       totalSlotsInUse++;
@@ -436,7 +505,6 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
   }
   if (DEBUG2 && debugflag2)
         USLOSS_Console("getEmptySlot(): new slot created, total slots: %d\n", totalSlotsInUse);
-  MailBoxTable[i].firstSlot = newSlot;
   return newSlot;
 }
 
@@ -447,17 +515,17 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
    Returns - nothing
    Side Effects - adds the slot into the end of the slot list specified by front.
    ----------------------------------------------------------------------- */
-void addSlot(slotPtr front, slotPtr toAdd){
+void addSlot(slotPtr *front, slotPtr toAdd){
   //no other procs on list, easy add
   if (front == NULL){
-    front = toAdd;
+    front = &toAdd;
   }
   //it must be added to the end of the blocked list
   else{
     slotPtr prev = NULL;
     slotPtr cur;
     //get a pointer to the last proc
-    for (cur = front; cur != NULL; cur = cur->nextSlot){
+    for (cur = *front; cur != NULL; cur = cur->nextSlot){
       prev = cur;
     }
 

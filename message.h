@@ -12,6 +12,7 @@ struct mailbox {
     int          slotsInUse;
     int          slotSize;
     slotPtr      firstSlot;
+    mboxProcPtr  nextBlockedProc
 };
 
 struct mailSlot {
@@ -22,11 +23,10 @@ struct mailSlot {
 };
 
 struct mboxProc{
-    int       pid;
-    int       status;
-    //pointer to next proc
-    //place to store message directly by a mailbox
-    //probably a few more, but less than phase 1
+    int         pid;
+    int         status;
+    mboxProcPtr nextProc;
+    char*       message;
 };
 
 struct psrBits {
@@ -43,5 +43,6 @@ union psrValues {
 };
 
 #define EMPTY -1
+#define READY 1
+#define SEND_BLOCKED 2
 
-//probably some blocked on send/recieve ready, various other constants for proc table

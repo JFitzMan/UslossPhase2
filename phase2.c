@@ -15,6 +15,10 @@
 /* ------------------------- Prototypes ----------------------------------- */
 int start1 (char *);
 extern int start2 (char *);
+void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id);
+int inKernelMode(char *procName);
+void disableInterrupts();
+void enableInterrupts();
 
 
 /* -------------------------- Globals ------------------------------------- */
@@ -25,12 +29,13 @@ int debugflag2 = 0;
 mailbox MailBoxTable[MAXMBOX];
 
 // the process table
-mboxProcPtr processTable[MAXPROC];
+struct mboxProc processTable[MAXPROC];
 
 //the mail slots
 slotPtr MailSlotTable[MAXSLOTS];
 
 int nextMailBoxID = 7;
+int totalSlotsInUse = 0;
 
 // also need array of function ptrs to system call 
 // handlers, ...
@@ -66,7 +71,16 @@ int start1(char *arg)
     int i;
     for (i = 0; i < MAXMBOX; i++){
       MailBoxTable[i].mboxID = EMPTY;
+      MailBoxTable[i].nextBlockedProc = NULL;
+      MailBoxTable[i].firstSlot = NULL;
     }
+
+    //initialize process table
+    for (i = 0; i < MAXPROC; i++){
+      processTable[i].pid = EMPTY;
+    }
+    processTable[getpid()].pid = getpid();
+    processTable[getpid()].status = READY;
 
     /*
     // initialize mail slots
@@ -85,6 +99,9 @@ int start1(char *arg)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("start1(): fork'ing start2 process\n");
     int kid_pid = fork1("start2", start2, 0, 4 * USLOSS_MIN_STACK, 1);
+    //add process to the process table
+    processTable[kid_pid].pid = kid_pid;
+    processTable[kid_pid].status = READY;
     int status;
     if ( join(&status) != kid_pid ) {
         USLOSS_Console("start2(): join returned something other than ");
@@ -161,23 +178,39 @@ int MboxCreate(int slots, int slot_size)
    ----------------------------------------------------------------------- */
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 {
+  disableInterrupts();
+
   //check that arguments are valid
   if (msg_size > MAX_MESSAGE){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): msg is too large!\n");
+    enableInterrupts();
     return -1;
   }else if (MailBoxTable[mbox_id].mboxID == EMPTY){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): mbox ID does not exist!!\n");
+    enableInterrupts();
     return -1;
   }
 
-  //check to make sure the mailbox has enough slots.
-  if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
-    USLOSS_Console("No slots left in mailbox %d. Halting...\n", mbox_id);
+  //check to make sure system has enough slots left
+  if (totalSlotsInUse >= MAXSLOTS){
+    USLOSS_Console("No slots left in system! Halting...\n");
     USLOSS_Halt(1);
   }
-  
+
+  //No slots left in Mailbox
+  if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
+    processTable[getpid()].status = SEND_BLOCKED;
+    blockMe(12);//something higher than 10, patrick will post which numbers display what soon
+  }
+  //free slot in mailbox, copy message.
+  else{
+
+  }
+
+  //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
+
 } /* MboxSend */
 
 
@@ -241,3 +274,11 @@ void enableInterrupts()
         /* We ARE in kernel mode */
         USLOSS_PsrSet( USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT );
 } /* enableInterrupts */
+
+void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
+  //no other procs on list, easy add
+  if (MailBoxTable[mbox_id].nextBlockedProc == NULL){
+    MailBoxTable[mbox_id].nextBlockedProc = toAdd;
+    return;
+  }
+}

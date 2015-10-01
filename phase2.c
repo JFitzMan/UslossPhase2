@@ -23,6 +23,7 @@ void disableInterrupts();
 void enableInterrupts();
 slotPtr getEmptySlot(int size, int mbox_id);
 void addSlot(slotPtr *front, slotPtr toAdd);
+int MboxRelease(int mailboxID);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -170,6 +171,50 @@ int MboxCreate(int slots, int slot_size)
 
 } /* MboxCreate */
 
+/*
+Releases a previously created mailbox. Any process 
+waiting on the mailbox should be zap’d. Note, however, 
+that zap’ing does not quite work. It would work for a high 
+priority process releasing low priority processes from the 
+mailbox, but not the other way around. You will need to devise a 
+different means of handling processes that are blocked on a 
+mailbox being released. Essentially, you will need to have a 
+blocked process return -3 from the send or receive that caused 
+it to block. You will need to have the process that called 
+MboxRelease unblock all the blocked processes. When each of these 
+processes awake from the block_me call inside send or receive, they 
+will need to “notice” that the mailbox has been released...
+Return values:
+-3: process was zap’d while releasing the mailbox. 
+-1: the mailboxID is not a mailbox that is in use.
+0: successful completion.
+*/
+int MboxRelease(int mailboxID){
+
+  //there are procs blocked on send, "zap" them before releasing
+  if (MailBoxTable[mailboxID].nextProcBlockedOnSend != NULL){
+    mboxProcPtr cur = MailBoxTable[mailboxID].nextProcBlockedOnSend;
+    while (cur != NULL){
+      cur->messageSize = -3;
+      cur = cur->nextProc;
+    }
+    //unblock the procs that were waiting on the mailbox
+    cur = MailBoxTable[mailboxID].nextProcBlockedOnSend;
+    while (cur != NULL){
+      unblockProc(cur->pid);
+      cur = cur->nextProc;
+    }
+  }
+  //no more blocked processes
+  MailBoxTable[mailboxID].nextProcBlockedOnSend = NULL;
+
+  //free the slots, if there are any
+  
+
+  return 0;
+
+}//mboxRelease
+
 
 /* ------------------------------------------------------------------------
    Name - MboxSend
@@ -248,6 +293,11 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): No slots left! Blocking...\n");
     blockMe(12);//something higher than 10, patrick will post which numbers display what soon
+    if (processTable[getpid()].messageSize == -3){
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): Zapped while blocked on send!\n");
+      return -3;
+    }
   }
 
   /*free slot in mailbox:

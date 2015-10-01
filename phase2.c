@@ -221,11 +221,30 @@ int MboxRelease(int mailboxID){
     }
     MailBoxTable[mailboxID].nextBlockedProc = NULL;
   }
-  //no more blocked processes
-  
 
   //free the slots, if there are any
-  
+  if (MailBoxTable[mailboxID].firstSlot != NULL){
+    slotPtr cur = MailBoxTable[mailboxID].firstSlot;
+    slotPtr prev = NULL;
+    while (cur != NULL){
+      prev = cur;
+      cur = cur->nextSlot;
+      prev->mboxID = EMPTY;
+      prev->nextSlot = NULL;
+      prev->msg_size = EMPTY;
+      free(prev->message);
+    }
+    MailBoxTable[mailboxID].firstSlot = NULL;
+  }
+
+  //clear the table out
+  MailBoxTable[mailboxID].mboxID = EMPTY;
+  MailBoxTable[mailboxID].numSlots = EMPTY;
+  MailBoxTable[mailboxID].slotsInUse = EMPTY;
+  MailBoxTable[mailboxID].slotSize = EMPTY;
+  MailBoxTable[mailboxID].nextBlockedProc = NULL; 
+  MailBoxTable[mailboxID].nextProcBlockedOnSend = NULL;
+  MailBoxTable[mailboxID].firstSlot = NULL;
 
   return 0;
 
@@ -423,6 +442,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     toReturn = toFree->msg_size;
     toFree->mboxID = EMPTY;
     toFree->nextSlot = NULL;
+    toFree->msg_size = EMPTY;
     free(toFree->message);
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxRecieve(): Freed allocated memory\n");

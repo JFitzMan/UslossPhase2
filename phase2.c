@@ -204,9 +204,25 @@ int MboxRelease(int mailboxID){
       unblockProc(cur->pid);
       cur = cur->nextProc;
     }
+    MailBoxTable[mailboxID].nextProcBlockedOnSend = NULL;
+  }
+  //same thing as above, but for procs blocked on recieve
+  if (MailBoxTable[mailboxID].nextBlockedProc != NULL){
+    mboxProcPtr cur = MailBoxTable[mailboxID].nextBlockedProc;
+    while (cur != NULL){
+      cur->messageSize = -3;
+      cur = cur->nextProc;
+    }
+    //unblock the procs that were waiting on the mailbox
+    cur = MailBoxTable[mailboxID].nextBlockedProc;
+    while (cur != NULL){
+      unblockProc(cur->pid);
+      cur = cur->nextProc;
+    }
+    MailBoxTable[mailboxID].nextBlockedProc = NULL;
   }
   //no more blocked processes
-  MailBoxTable[mailboxID].nextProcBlockedOnSend = NULL;
+  
 
   //free the slots, if there are any
   
@@ -369,6 +385,10 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
         USLOSS_Console("MmoxRecieve(): No messages to recieve! Blocking...\n");
     blockMe(11);
     disableInterrupts();
+
+    if (processTable[getpid()].msg_size == -3){
+      return -3;
+    }
 
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): Unblocked, message reads: %s\n", processTable[getpid()].message);

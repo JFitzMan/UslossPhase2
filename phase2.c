@@ -19,9 +19,8 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id);
 int inKernelMode(char *procName);
 void disableInterrupts();
 void enableInterrupts();
-void addMessageSlot(void *msg_ptr, int mbox_id);
-slotPtr getEmptySlot();
-
+slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id);
+void addSlot(slotPtr front, slotPtr toAdd);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -212,7 +211,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   1)Allocate slot 2)copy message 3)profit
   */
   else{
-    addMessageSlot(msg_ptr, mbox_id);
+    slotPtr newSlot = getEmptySlot(msg_size, MailBoxTable[mbox_id].firstSlot, mbox_id);
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
@@ -303,11 +302,34 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
 
 }// addProcToBlockedList
 
-void addMessageSlot(void *msg_ptr, int mbox_id){
-  //no slots currently allocated
-
+/* ------------------------------------------------------------------------
+   Name - getEmptySlot
+   Purpose - returns a pointer to an empty mail slot
+   Parameters - None
+   Returns - Pointer to mail slot, NULL if all slots are full.
+   Side Effects - increments totalSlotsInUse
+                  updates the mailslot fields of the slot it's returning
+   ----------------------------------------------------------------------- */
+slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
+  slotPtr newSlot = NULL;
+  int i;
+  for (i=0; i > MAXSLOTS; i++){
+    if (MailSlotTable[i].mboxID == -1){
+      //initialize new slot
+      newSlot = &MailSlotTable[i];
+      newSlot->mboxID = mbox_id;
+      newSlot->nextSlot = NULL;
+      newSlot->message = malloc(size);
+      //add new slot into mailbox slot list
+      addSlot(boxSlotList, newSlot);
+      //increment total slots in use
+      totalSlotsInUse++;
+      break;
+    }
+  }
+  return newSlot;
 }
 
-slotPtr getEmptySlot(){
-  
+void addSlot(slotPtr front, slotPtr toAdd){
+
 }

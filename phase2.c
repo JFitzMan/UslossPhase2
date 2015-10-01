@@ -26,7 +26,7 @@ void addSlot(slotPtr front, slotPtr toAdd);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 1;
+int debugflag2 = 0;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -203,14 +203,17 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     //place message directly in blocked procs message field 
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): process waiting on recieve! Placing message in proc table slot..\n");
+    //initialize the proper fields in the process table entry
     MailBoxTable[mbox_id].nextBlockedProc->message = malloc(msg_size);
     MailBoxTable[mbox_id].nextBlockedProc->messageSize = msg_size;
     MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
     memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
+    //remove the process from the list of blocked processes
+    //MailBoxTable[mbox_id].nextBlockedProc
     unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
-    blockMe(12);
+    //blockMe(12);
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): Message sent successfully\n");
   }
@@ -264,6 +267,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
   disableInterrupts();
+  inKernelMode("MboxRecieve");
   processTable[getpid()].pid = getpid();
   int toReturn = -1;
   //check that arguments are valid
@@ -287,13 +291,15 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): No messages to recieve! Blocking...\n");
     blockMe(11);
+    disableInterrupts();
 
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): Unblocked, message reads: %s\n", processTable[getpid()].message);
     memcpy(msg_ptr, processTable[getpid()].message, processTable[getpid()].messageSize);
-    toReturn = sizeof(processTable[getpid()].messageSize);
+    toReturn = processTable[getpid()].messageSize;
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): Unblocking sender, pid %d\n", processTable[getpid()].pidOfMessageSender);
+    //unblock the sending process
     unblockProc(processTable[getpid()].pidOfMessageSender);
   }
 
@@ -322,6 +328,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
         USLOSS_Console("MmoxRecieve(): Freed allocared memory\n");
 
   }
+  enableInterrupts();
   return toReturn;
 
 } /* MboxReceive */

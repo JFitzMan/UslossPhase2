@@ -202,6 +202,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   //No slots left in Mailbox
   if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
     processTable[getpid()].status = SEND_BLOCKED;
+    addProcToBlockedList(&processTable[getpid()], mbox_id);
     blockMe(12);//something higher than 10, patrick will post which numbers display what soon
   }
   //free slot in mailbox, copy message.

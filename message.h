@@ -12,7 +12,7 @@ struct mailbox {
     int          slotsInUse;
     int          slotSize;
     slotPtr      firstSlot;
-    mboxProcPtr  nextBlockedProc
+    mboxProcPtr  nextBlockedProc;
 };
 
 struct mailSlot {

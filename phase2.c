@@ -278,7 +278,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     return -1;
   }else if (MailBoxTable[mbox_id].mboxID == EMPTY){
     if (DEBUG2 && debugflag2)
-        USLOSS_Console("MboxSend(): mbox ID does not exist!!\n");
+        USLOSS_Console("MboxReceive(): mbox ID does not exist!!\n");
     enableInterrupts();
     return -1;
   }
@@ -325,7 +325,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     toFree->nextSlot = NULL;
     free(toFree->message);
     if (DEBUG2 && debugflag2)
-        USLOSS_Console("MmoxRecieve(): Freed allocared memory\n");
+        USLOSS_Console("MmoxRecieve(): Freed allocated memory\n");
 
   }
   enableInterrupts();
@@ -333,6 +333,10 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 
 } /* MboxReceive */
 
+/*
+ * Conditionally sends a message to a mailbox. Does not block the invoking process.
+ * Returns different values depending on the outcome.
+*/
 int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 	disableInterrupts();
 	processTable[getpid()].pid = getpid();
@@ -393,9 +397,68 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 	
 	enableInterrupts();
 	return 0; //message sent successfully
-}
+} /* MboxCondSend */
 
+/*
+ * Conditionally receives a message to a mailbox. Does not block the invoking process.
+ * Returns different values depending on the outcome.
+*/
+int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
 
+	disableInterrupts();
+	inKernelMode("MboxRecieve");
+	processTable[getpid()].pid = getpid();
+	int toReturn = -1;
+	//check that arguments are valid
+	if (msg_size < MailBoxTable[mbox_id].slotSize){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondRecieve(): invalid message size for recieve!\n");
+		enableInterrupts();
+		return -1;
+	}else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondReceive(): mbox ID does not exist!!\n");
+		enableInterrupts();
+		return -1;
+	}
+	
+	//there are no messages! Process gets blocked until one comes in
+	if (MailBoxTable[mbox_id].slotsInUse == 0){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MmoxCondRecieve(): No messages to recieve! Returning -2...\n");
+		enableInterrupts();
+		return -2; //Returns value for no messages, per spec
+	}
+
+	//there is a message to receive waiting in the box
+	else{
+		//copy the message from the slot, free the slot
+		memcpy(msg_ptr, MailBoxTable[mbox_id].firstSlot->message, MailBoxTable[mbox_id].firstSlot->msg_size);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MmoxCondRecieve(): Copied message to buffer\n");
+
+		slotPtr toFree = MailBoxTable[mbox_id].firstSlot;
+		if (MailBoxTable[mbox_id].firstSlot->nextSlot == NULL){
+			MailBoxTable[mbox_id].firstSlot = NULL;
+		}
+		else{
+			MailBoxTable[mbox_id].firstSlot = MailBoxTable[mbox_id].firstSlot->nextSlot;
+		}
+		//decrement slotsInUse
+		MailBoxTable[mbox_id].slotsInUse--;
+		//free the box, grab the return value first
+		toReturn = toFree->msg_size;
+		toFree->mboxID = EMPTY;
+		toFree->nextSlot = NULL;
+		free(toFree->message);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MmoxCondRecieve(): Freed allocated memory\n");
+	}
+	
+  enableInterrupts();
+  return toReturn; 
+
+} /* MboxCondReceive */
 
 
 /*

@@ -312,7 +312,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     return -1;
   }else if (MailBoxTable[mbox_id].mboxID == EMPTY){
     if (DEBUG2 && debugflag2)
-        USLOSS_Console("MboxSend(): mbox ID does not exist!!\n");
+        USLOSS_Console("MboxReceive(): mbox ID does not exist!!\n");
     enableInterrupts();
     return -1;
   }
@@ -397,12 +397,138 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
       unblockProc(pidToUnblock);
     }
 
-
   }
   enableInterrupts();
   return toReturn;
 
 } /* MboxReceive */
+
+/*
+ * Conditionally sends a message to a mailbox. Does not block the invoking process.
+ * Returns different values depending on the outcome.
+*/
+int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
+	disableInterrupts();
+	processTable[getpid()].pid = getpid();
+
+	//check that arguments are valid
+	if (msg_size > MAX_MESSAGE){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): msg is too large!\n");
+		enableInterrupts();
+		return -1;
+	}else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): mbox ID does not exist!!\n");
+		enableInterrupts();
+		return -1;
+	}
+
+	//check to see if there are processes blocked on recieve
+	if (MailBoxTable[mbox_id].nextBlockedProc != NULL){
+		//place message directly in blocked procs message field 
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): process waiting on recieve! Placing message in proc table slot...\n");
+		MailBoxTable[mbox_id].nextBlockedProc->message = malloc(msg_size);
+		MailBoxTable[mbox_id].nextBlockedProc->messageSize = msg_size;
+		MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
+		memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
+		unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): Message sent successfully\n");
+	}
+	
+	//check to make sure system has enough slots left
+	else if (totalSlotsInUse >= MAXSLOTS){
+		USLOSS_Console("MBoxCondSend(): No slots left in system! Returning -2...\n");
+		enableInterrupts();
+		return -2;
+	}
+	//No slots left in Mailbox
+	else if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
+		processTable[getpid()].status = SEND_BLOCKED;
+		addProcToBlockedList(&processTable[getpid()], mbox_id);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondSend(): No slots left! Returning -2...\n");
+			enableInterrupts();
+			return -2; 
+	}
+	else{ //get new slot and add it to the list of mail slots
+		slotPtr newSlot = getEmptySlot(msg_size, mbox_id);
+		memcpy(newSlot->message, msg_ptr, msg_size);
+		MailBoxTable[mbox_id].firstSlot = newSlot;
+		if (DEBUG2 && debugflag2){
+			USLOSS_Console("MboxCondSend(): New slot allocated and message copied\n");
+			USLOSS_Console("MboxCondSend(): Message in new slot: %s\n", MailBoxTable[mbox_id].firstSlot->message);
+		}
+	}
+	
+	enableInterrupts();
+	return 0; //message sent successfully
+} /* MboxCondSend */
+
+/*
+ * Conditionally receives a message to a mailbox. Does not block the invoking process.
+ * Returns different values depending on the outcome.
+*/
+int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
+
+	disableInterrupts();
+	inKernelMode("MboxRecieve");
+	processTable[getpid()].pid = getpid();
+	int toReturn = -1;
+	//check that arguments are valid
+	if (msg_size < MailBoxTable[mbox_id].slotSize){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondRecieve(): invalid message size for recieve!\n");
+		enableInterrupts();
+		return -1;
+	}else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MboxCondReceive(): mbox ID does not exist!!\n");
+		enableInterrupts();
+		return -1;
+	}
+	
+	//there are no messages! Process gets blocked until one comes in
+	if (MailBoxTable[mbox_id].slotsInUse == 0){
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MmoxCondRecieve(): No messages to recieve! Returning -2...\n");
+		enableInterrupts();
+		return -2; //Returns value for no messages, per spec
+	}
+
+	//there is a message to receive waiting in the box
+	else{
+		//copy the message from the slot, free the slot
+		memcpy(msg_ptr, MailBoxTable[mbox_id].firstSlot->message, MailBoxTable[mbox_id].firstSlot->msg_size);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MmoxCondRecieve(): Copied message to buffer\n");
+
+		slotPtr toFree = MailBoxTable[mbox_id].firstSlot;
+		if (MailBoxTable[mbox_id].firstSlot->nextSlot == NULL){
+			MailBoxTable[mbox_id].firstSlot = NULL;
+		}
+		else{
+			MailBoxTable[mbox_id].firstSlot = MailBoxTable[mbox_id].firstSlot->nextSlot;
+		}
+		//decrement slotsInUse
+		MailBoxTable[mbox_id].slotsInUse--;
+		//free the box, grab the return value first
+		toReturn = toFree->msg_size;
+		toFree->mboxID = EMPTY;
+		toFree->nextSlot = NULL;
+		free(toFree->message);
+		if (DEBUG2 && debugflag2)
+			USLOSS_Console("MmoxCondRecieve(): Freed allocated memory\n");
+	}
+	
+  enableInterrupts();
+  return toReturn; 
+
+} /* MboxCondReceive */
 
 
 /*

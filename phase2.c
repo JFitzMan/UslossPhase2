@@ -254,8 +254,6 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   1)Allocate slot 2)copy message 3)profit
   */
   else{
-
-
     //get new slot and add it to the list of mail slots
     slotPtr newSlot = getEmptySlot(msg_size, mbox_id);
     memcpy(newSlot->message, msg_ptr, msg_size);
@@ -270,14 +268,9 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
       }
      cur->nextSlot = newSlot;
     }
-
-
-
     if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxSend(): New slot allocated and message copied\n");
       }
-
-
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
@@ -336,21 +329,6 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     //unblock the sending process
     unblockProc(processTable[getpid()].pidOfMessageSender);
   }
-  //there is a message blocked on send because the mailbox is full!
-  /*
-  else if (MailBoxTable[mbox_id].slotsInUse == 0 && MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL){
-    //grab the message from the blocked proc and unblock it
-    if (DEBUG2 && debugflag2){
-        USLOSS_Console("MmoxRecieve(): There is a proc blocked on send! \n");
-        USLOSS_Console("MmoxRecieve(): It's message: %s \n", MailBoxTable[mbox_id].nextProcBlockedOnSend->message);
-      }
-    memcpy(msg_ptr, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
-    toReturn = MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize;
-    //MailBoxTable[mbox_id].nextProcBlockedOnSend = MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc;
-    free(MailBoxTable[mbox_id].nextProcBlockedOnSend->message);
-    unblockProc(MailBoxTable[mbox_id].nextProcBlockedOnSend->pid);
-  } 
-  */
   //there is a message to receive waiting in the box
   else{
     //copy the message from the slot, free the slot
@@ -385,6 +363,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
       if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): There is a process blocked on send, and we just freed a slot!\n");
       MboxSend(mbox_id, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
+      free(MailBoxTable[mbox_id].nextProcBlockedOnSend->message);
       int pidToUnblock = MailBoxTable[mbox_id].nextProcBlockedOnSend->pid;
       if (MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc == NULL){
         if (DEBUG2 && debugflag2)

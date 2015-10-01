@@ -24,7 +24,7 @@ void addSlot(slotPtr front, slotPtr toAdd);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 0;
+int debugflag2 = 1;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -87,8 +87,7 @@ int start1(char *arg)
     // initialize mail slots
     for (i = 0; i < MAXSLOTS; i++){
       MailSlotTable[i].mboxID = EMPTY; 
-    }
-    
+    }    
 
     // Initialize USLOSS_IntVec and system call handlers,
     // allocate mailboxes for interrupt handlers.  Etc... 
@@ -205,13 +204,19 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
     processTable[getpid()].status = SEND_BLOCKED;
     addProcToBlockedList(&processTable[getpid()], mbox_id);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): No slots left! Blocking...\n");
     blockMe(12);//something higher than 10, patrick will post which numbers display what soon
   }
   /*free slot in mailbox:
   1)Allocate slot 2)copy message 3)profit
   */
   else{
+    //get new slot and add it to the list of mail slots
     slotPtr newSlot = getEmptySlot(msg_size, MailBoxTable[mbox_id].firstSlot, mbox_id);
+    memcpy(newSlot->message, msg_ptr, msg_size);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): New slot allocated and message copied\n");
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
@@ -313,8 +318,10 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
 slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
   slotPtr newSlot = NULL;
   int i;
-  for (i=0; i > MAXSLOTS; i++){
-    if (MailSlotTable[i].mboxID == -1){
+  for (i=0; i < MAXSLOTS; i++){
+    if (MailSlotTable[i].mboxID == EMPTY){
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("getEmptySlot(): About to create a new slot\n");
       //initialize new slot
       newSlot = &MailSlotTable[i];
       newSlot->mboxID = mbox_id;
@@ -327,6 +334,8 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
       break;
     }
   }
+  if (DEBUG2 && debugflag2)
+        USLOSS_Console("getEmptySlot(): new slot created, total slots: %d\n", totalSlotsInUse);
   return newSlot;
 }
 
@@ -338,5 +347,20 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
    Side Effects - adds the slot into the end of the slot list specified by front.
    ----------------------------------------------------------------------- */
 void addSlot(slotPtr front, slotPtr toAdd){
+  //no other procs on list, easy add
+  if (front == NULL){
+    front = toAdd;
+  }
+  //it must be added to the end of the blocked list
+  else{
+    slotPtr prev = NULL;
+    slotPtr cur;
+    //get a pointer to the last proc
+    for (cur = front; cur != NULL; cur = cur->nextSlot){
+      prev = cur;
+    }
 
-}
+    prev->nextSlot = toAdd;
+
+  }//end else
+}//addSlot

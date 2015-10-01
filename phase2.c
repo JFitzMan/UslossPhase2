@@ -191,6 +191,12 @@ Return values:
 */
 int MboxRelease(int mailboxID){
 
+  if (MailBoxTable[mailboxID].mboxID == EMPTY){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxRelease(): Not valid mailbox ID!\n");
+    return -1;
+  }
+
   //there are procs blocked on send, "zap" them before releasing
   if (MailBoxTable[mailboxID].nextProcBlockedOnSend != NULL){
     mboxProcPtr cur = MailBoxTable[mailboxID].nextProcBlockedOnSend;

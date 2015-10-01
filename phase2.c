@@ -279,6 +279,20 @@ void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
   //no other procs on list, easy add
   if (MailBoxTable[mbox_id].nextBlockedProc == NULL){
     MailBoxTable[mbox_id].nextBlockedProc = toAdd;
-    return;
   }
-}
+  //it must be added to the end of the blocked list
+  else{
+
+    mboxProcPtr prev = NULL;
+    mboxProcPtr cur;
+    //get a pointer to the last proc
+    for (cur = MailBoxTable[mbox_id].nextBlockedProc; 
+      cur != NULL; cur = cur->nextProc){
+      prev = cur;
+    }
+
+    prev->nextProc = toAdd;
+
+  }//end else
+
+}// addProcToBlockedList

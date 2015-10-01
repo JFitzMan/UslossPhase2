@@ -26,7 +26,7 @@ void addSlot(slotPtr front, slotPtr toAdd);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 0;
+int debugflag2 = 1;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -181,7 +181,9 @@ int MboxCreate(int slots, int slot_size)
    ----------------------------------------------------------------------- */
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 {
+
   disableInterrupts();
+  processTable[getpid()].pid = getpid();
 
   //check that arguments are valid
   if (msg_size > MAX_MESSAGE){
@@ -196,14 +198,31 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     return -1;
   }
 
+  //check to see if there are processes blocked on recieve
+  if (MailBoxTable[mbox_id].nextBlockedProc != NULL){
+    //place message directly in blocked procs message field 
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): process waiting on recieve! Placing message in proc table slot..\n");
+    MailBoxTable[mbox_id].nextBlockedProc->message = malloc(msg_size);
+    MailBoxTable[mbox_id].nextBlockedProc->messageSize = msg_size;
+    MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
+    memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
+    unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
+    blockMe(12);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): Message sent successfully\n");
+  }
+
   //check to make sure system has enough slots left
-  if (totalSlotsInUse >= MAXSLOTS){
+  else if (totalSlotsInUse >= MAXSLOTS){
     USLOSS_Console("No slots left in system! Halting...\n");
     USLOSS_Halt(1);
   }
 
   //No slots left in Mailbox
-  if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
+  else if (MailBoxTable[mbox_id].slotsInUse == MailBoxTable[mbox_id].numSlots){
     processTable[getpid()].status = SEND_BLOCKED;
     addProcToBlockedList(&processTable[getpid()], mbox_id);
     if (DEBUG2 && debugflag2)
@@ -226,7 +245,6 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
-
   enableInterrupts();
   //message sent successfully
   return 0;
@@ -246,6 +264,8 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
   disableInterrupts();
+  processTable[getpid()].pid = getpid();
+  int toReturn = -1;
   //check that arguments are valid
   if (msg_size < MailBoxTable[mbox_id].slotSize){
     if (DEBUG2 && debugflag2)
@@ -263,14 +283,24 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   if (MailBoxTable[mbox_id].slotsInUse == 0){
     processTable[getpid()].status = RECIEVE_BLOCKED;
     addProcToBlockedList(&processTable[getpid()], mbox_id);
+
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): No messages to recieve! Blocking...\n");
-    blockMe(12);//something higher than 10, patrick will post which numbers display what soon
+    blockMe(11);
+
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): Unblocked, message reads: %s\n", processTable[getpid()].message);
+    memcpy(msg_ptr, processTable[getpid()].message, processTable[getpid()].messageSize);
+    toReturn = sizeof(processTable[getpid()].messageSize);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): Unblocking sender, pid %d\n", processTable[getpid()].pidOfMessageSender);
+    unblockProc(processTable[getpid()].pidOfMessageSender);
   }
+
   //there is a message to receive waiting in the box
   else{
     //copy the message from the slot, free the slot
-    memcpy(msg_ptr, MailBoxTable[mbox_id].firstSlot->message, MailBoxTable[mbox_id].slotSize);
+    memcpy(msg_ptr, MailBoxTable[mbox_id].firstSlot->message, MailBoxTable[mbox_id].firstSlot->msg_size);
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MmoxRecieve(): Copied message to buffer\n");
 
@@ -283,13 +313,16 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     }
     //decrement slotsInUse
     MailBoxTable[mbox_id].slotsInUse--;
-    //free the box
+    //free the box, grab the retunr value first
+    toReturn = toFree->msg_size;
     toFree->mboxID = EMPTY;
     toFree->nextSlot = NULL;
     free(toFree->message);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): Freed allocared memory\n");
 
   }
-  return MailBoxTable[mbox_id].slotSize;
+  return toReturn;
 
 } /* MboxReceive */
 
@@ -344,6 +377,8 @@ void enableInterrupts()
 void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
   //no other procs on list, easy add
   if (MailBoxTable[mbox_id].nextBlockedProc == NULL){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("addProcToBlockedList(): first proc to block on this mailbox\n");
     MailBoxTable[mbox_id].nextBlockedProc = toAdd;
   }
   //it must be added to the end of the blocked list
@@ -382,6 +417,7 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
       newSlot = &MailSlotTable[i];
       newSlot->mboxID = mbox_id;
       newSlot->nextSlot = NULL;
+      newSlot->msg_size = size;
       newSlot->message = malloc(size);
       //add new slot into mailbox slot list
       addSlot(boxSlotList, newSlot);

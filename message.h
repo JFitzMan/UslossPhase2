@@ -12,12 +12,14 @@ struct mailbox {
     int          slotSize;
     slotPtr      firstSlot;
     mboxProcPtr  nextBlockedProc;
+    mboxProcPtr  nextProcBlockedOnSend;
 
 };
 
 struct mailSlot {
     int       mboxID;
     char*     message;
+    int       msg_size;
     slotPtr   nextSlot;
 };
 
@@ -26,6 +28,8 @@ struct mboxProc{
     int         status;
     mboxProcPtr nextProc;
     char*       message;
+    int         messageSize;
+    int         pidOfMessageSender;
 };
 
 struct psrBits {

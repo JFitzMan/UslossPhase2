@@ -1,6 +1,5 @@
 
 #define DEBUG2 1
-#define NULL 0
 
 typedef struct mailSlot *slotPtr;
 typedef struct mailbox   mailbox;
@@ -13,11 +12,11 @@ struct mailbox {
     int          slotSize;
     slotPtr      firstSlot;
     mboxProcPtr  nextBlockedProc;
+
 };
 
 struct mailSlot {
     int       mboxID;
-    int       status;
     char*     message;
     slotPtr   nextSlot;
 };
@@ -45,4 +44,6 @@ union psrValues {
 #define EMPTY -1
 #define READY 1
 #define SEND_BLOCKED 2
+#define RECIEVE_BLOCKED 3
+
 

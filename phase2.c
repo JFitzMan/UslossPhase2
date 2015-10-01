@@ -9,7 +9,9 @@
 #include <phase1.h>
 #include <phase2.h>
 #include <usloss.h>
-
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "message.h"
 
 /* ------------------------- Prototypes ----------------------------------- */
@@ -215,11 +217,18 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     //get new slot and add it to the list of mail slots
     slotPtr newSlot = getEmptySlot(msg_size, MailBoxTable[mbox_id].firstSlot, mbox_id);
     memcpy(newSlot->message, msg_ptr, msg_size);
-    if (DEBUG2 && debugflag2)
+    if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxSend(): New slot allocated and message copied\n");
+        USLOSS_Console("MboxSend(): Message in new slot: %s\n", newSlot->message);
+      }
+
   }
 
   //TURN THOSE INTERRUPTS BACK ON BEFORE LEAVING
+
+  enableInterrupts();
+  //message sent successfully
+  return 0;
 
 } /* MboxSend */
 
@@ -235,6 +244,52 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
    ----------------------------------------------------------------------- */
 int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
 {
+  disableInterrupts();
+  //check that arguments are valid
+  if (msg_size < MailBoxTable[mbox_id].slotSize){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxRecieve(): invalid message size for recieve!\n");
+    enableInterrupts();
+    return -1;
+  }else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): mbox ID does not exist!!\n");
+    enableInterrupts();
+    return -1;
+  }
+
+  //there are no messages! Process gets blocked until one comes in
+  if (MailBoxTable[mbox_id].slotsInUse == 0){
+    processTable[getpid()].status = RECIEVE_BLOCKED;
+    addProcToBlockedList(&processTable[getpid()], mbox_id);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): No messages to recieve! Blocking...\n");
+    blockMe(12);//something higher than 10, patrick will post which numbers display what soon
+  }
+  //there is a message to receive waiting in the box
+  else{
+    //copy the message from the slot, free the slot
+    memcpy(msg_ptr, MailBoxTable[mbox_id].firstSlot->message, MailBoxTable[mbox_id].slotSize);
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MmoxRecieve(): Copied message to buffer\n");
+
+    slotPtr toFree = MailBoxTable[mbox_id].firstSlot;
+    if (MailBoxTable[mbox_id].firstSlot->nextSlot == NULL){
+      MailBoxTable[mbox_id].firstSlot = NULL;
+    }
+    else{
+      MailBoxTable[mbox_id].firstSlot = MailBoxTable[mbox_id].firstSlot->nextSlot;
+    }
+    //decrement slotsInUse
+    MailBoxTable[mbox_id].slotsInUse--;
+    //free the box
+    toFree->mboxID = EMPTY;
+    toFree->nextSlot = NULL;
+    free(toFree->message);
+
+  }
+  return 0;
+
 } /* MboxReceive */
 
 
@@ -330,6 +385,7 @@ slotPtr getEmptySlot(int size, slotPtr boxSlotList, int mbox_id){
       //add new slot into mailbox slot list
       addSlot(boxSlotList, newSlot);
       //increment total slots in use
+      MailBoxTable[mbox_id].slotsInUse++;
       totalSlotsInUse++;
       break;
     }

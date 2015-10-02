@@ -391,7 +391,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   processTable[getpid()].pid = getpid();
   int toReturn = -1;
   //check that arguments are valid
-  if (msg_size < MailBoxTable[mbox_id].slotSize){
+  if (msg_size < MailBoxTable[mbox_id].slotSize && msg_ptr != NULL){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxReceive(): invalid message size for receive!\n");
     enableInterrupts();

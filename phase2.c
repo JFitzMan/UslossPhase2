@@ -25,7 +25,7 @@ slotPtr getEmptySlot(int size, int mbox_id);
 void addSlot(slotPtr *front, slotPtr toAdd);
 int MboxRelease(int mailboxID);
 int waitDevice(int type, int unit, int *status);
-void clockHandler();
+void clockHandler2();
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -107,7 +107,7 @@ int start1(char *arg)
 	diskMboxID[0] = MboxCreate(0, 50);
 	diskMboxID[1] = MboxCreate(0, 50);
 	
-	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler;
+	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
     enableInterrupts();
     
     // Create a process for start2, then block on a join until start2 quits
@@ -658,7 +658,7 @@ int waitDevice(int type, int unit, int *status){
 	int result;
 	char buffer[50];
 	
-	clockHandler(); //Manually calling clockHandler for now until clock interrupts are turned on (?)
+	//clockHandler(); //Manually calling clockHandler for now until clock interrupts are turned on (?)
 
 	switch(type){
 		case USLOSS_CLOCK_DEV:
@@ -802,7 +802,7 @@ void addSlot(slotPtr *front, slotPtr toAdd){
   }//end else
 }//addSlot
 
-void clockHandler(){
+/*void clockHandler2(){
 	int timesCalled = 0;
 	
 	//if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
@@ -810,4 +810,5 @@ void clockHandler(){
 	//}
 	
 	timesCalled++;
-}
+}*/
+

@@ -25,11 +25,11 @@ slotPtr getEmptySlot(int size, int mbox_id);
 void addSlot(slotPtr *front, slotPtr toAdd);
 int MboxRelease(int mailboxID);
 int waitDevice(int type, int unit, int *status);
-void clockHandler();
+void clockHandler2();
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 0;
+int debugflag2 = 1;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -101,14 +101,14 @@ int start1(char *arg)
 	int clockMboxID;
 	int termMboxID[USLOSS_TERM_UNITS];
 	int diskMboxID[USLOSS_DISK_UNITS];
-	clockMboxID = MboxCreate(1, 50); // Zero slot mailbox
+	clockMboxID = MboxCreate(0, 50); // Zero slot mailbox
 	for(i =0; i<USLOSS_TERM_UNITS; i++)
 		termMboxID[i] = MboxCreate(0, 50);
 	diskMboxID[0] = MboxCreate(0, 50);
 	diskMboxID[1] = MboxCreate(0, 50);
 	
-	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler;
-    enableInterrupts();
+	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
+  enableInterrupts();
     
     // Create a process for start2, then block on a join until start2 quits
     if (DEBUG2 && debugflag2)
@@ -658,11 +658,13 @@ int waitDevice(int type, int unit, int *status){
 	int result;
 	char buffer[50];
 	
-	clockHandler(); //Manually calling clockHandler for now until clock interrupts are turned on (?)
+	//clockHandler(); //Manually calling clockHandler for now until clock interrupts are turned on (?)
 
 	switch(type){
 		case USLOSS_CLOCK_DEV:
 			result = MboxReceive(unit, buffer, 50);
+      if (DEBUG2 && debugflag2)
+          USLOSS_Console("waitDevice(): Recieve successful!\n");
 			USLOSS_DeviceInput(type, unit, status);
 			return 0;
 		//cases for Terminal and Disk
@@ -802,11 +804,13 @@ void addSlot(slotPtr *front, slotPtr toAdd){
   }//end else
 }//addSlot
 
-void clockHandler(){
+void clockHandler2(){
 	int timesCalled = 0;
-	
+
+	if (DEBUG2 && debugflag2)
+        USLOSS_Console("clockHandler(): Called %d\n");
 	//if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
-		MboxCondSend(0, "a", 50);
+	MboxCondSend(0, "a", 50);
 	//}
 	
 	timesCalled++;

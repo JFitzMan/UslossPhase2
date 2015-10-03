@@ -24,6 +24,8 @@ void enableInterrupts();
 slotPtr getEmptySlot(int size, int mbox_id);
 void addSlot(slotPtr *front, slotPtr toAdd);
 int MboxRelease(int mailboxID);
+int waitDevice(int type, int unit, int *status);
+void clockHandler();
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -38,12 +40,11 @@ struct mboxProc processTable[MAXPROC];
 //the mail slots
 struct mailSlot MailSlotTable[MAXSLOTS];
 
-int nextMailBoxID = 7;
+int nextMailBoxID = 0;
 int totalSlotsInUse = 0;
 
 // also need array of function ptrs to system call 
 // handlers, ...
-
 
 
 
@@ -59,7 +60,8 @@ int totalSlotsInUse = 0;
    ----------------------------------------------------------------------- */
 int start1(char *arg)
 {
-    if (DEBUG2 && debugflag2)
+
+	if (DEBUG2 && debugflag2)
         USLOSS_Console("start1(): at beginning\n");
 
     // check kernel mode
@@ -68,16 +70,15 @@ int start1(char *arg)
     
     // Disable interrupts
     disableInterrupts();
-
-
-
+	
     //initialize mailbox table
-    int i;
+	int i;
     for (i = 0; i < MAXMBOX; i++){
       MailBoxTable[i].mboxID = EMPTY;
       MailBoxTable[i].nextBlockedProc = NULL;
       MailBoxTable[i].firstSlot = NULL;
     }
+	
 
     //initialize process table
     for (i = 0; i < MAXPROC; i++){
@@ -91,10 +92,22 @@ int start1(char *arg)
     for (i = 0; i < MAXSLOTS; i++){
       MailSlotTable[i].mboxID = EMPTY; 
     }    
-
-    // Initialize USLOSS_IntVec and system call handlers,
-    // allocate mailboxes for interrupt handlers.  Etc... 
-
+	
+    // Initialize USLOSS_IntVec and system call handlers, etc...
+	
+	
+	// Create mailboxes for devices: 1 for clock, 4 for terminals, 2 for disks
+	// Seven mailboxes in total
+	int clockMboxID;
+	int termMboxID[USLOSS_TERM_UNITS];
+	int diskMboxID[USLOSS_DISK_UNITS];
+	clockMboxID = MboxCreate(1, 50); // Zero slot mailbox
+	for(i =0; i<USLOSS_TERM_UNITS; i++)
+		termMboxID[i] = MboxCreate(0, 50);
+	diskMboxID[0] = MboxCreate(0, 50);
+	diskMboxID[1] = MboxCreate(0, 50);
+	
+	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler;
     enableInterrupts();
     
     // Create a process for start2, then block on a join until start2 quits
@@ -554,6 +567,9 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
   }
 	
 	enableInterrupts();
+	if (DEBUG2 && debugflag2){
+        USLOSS_Console("MboxCondSend(): Message sent!\n");
+      }
 	return 0; //message sent successfully
 } /* MboxCondSend */
 
@@ -568,7 +584,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
 	processTable[getpid()].pid = getpid();
 	int toReturn = -1;
 	//check that arguments are valid
-	if (msg_size < MailBoxTable[mbox_id].slotSize){
+	if (msg_size < MailBoxTable[mbox_id].slotSize && msg_ptr != NULL){
 		if (DEBUG2 && debugflag2)
 			USLOSS_Console("MboxCondReceive(): invalid message size for receive!\n");
 		enableInterrupts();
@@ -638,6 +654,24 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
 
 } /* MboxCondReceive */
 
+int waitDevice(int type, int unit, int *status){
+	int result;
+	char buffer[50];
+	
+	clockHandler(); //Manually calling clockHandler for now until clock interrupts are turned on (?)
+
+	switch(type){
+		case USLOSS_CLOCK_DEV:
+			result = MboxReceive(unit, buffer, 50);
+			USLOSS_DeviceInput(type, unit, status);
+			return 0;
+		//cases for Terminal and Disk
+		default:
+			return -1;
+			
+	}
+	return -2;
+}
 
 /*
  *checks the PSR for kernel mode
@@ -767,3 +801,13 @@ void addSlot(slotPtr *front, slotPtr toAdd){
 
   }//end else
 }//addSlot
+
+void clockHandler(){
+	int timesCalled = 0;
+	
+	//if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
+		MboxCondSend(0, "a", 50);
+	//}
+	
+	timesCalled++;
+}

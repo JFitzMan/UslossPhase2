@@ -35,7 +35,7 @@ extern int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_max_size);
 /* type = interrupt device type, unit = # of device (when more than one),
  * status = where interrupt handler puts device's status register.
  */
-extern int waitdevice(int type, int unit, int *status);
+extern int waitDevice(int type, int unit, int *status);
 
 //checks to see if the processor is in kernel mode
 int inKernelMode(char *procName);

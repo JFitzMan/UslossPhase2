@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "message.h"
+#include "handler.h"
 
 /* ------------------------- Prototypes ----------------------------------- */
 int start1 (char *);
@@ -25,7 +26,6 @@ slotPtr getEmptySlot(int size, int mbox_id);
 void addSlot(slotPtr *front, slotPtr toAdd);
 int MboxRelease(int mailboxID);
 int waitDevice(int type, int unit, int *status);
-void clockHandler2();
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -109,6 +109,7 @@ int start1(char *arg)
 	
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
   enableInterrupts();
+
     
     // Create a process for start2, then block on a join until start2 quits
     if (DEBUG2 && debugflag2)
@@ -804,7 +805,8 @@ void addSlot(slotPtr *front, slotPtr toAdd){
   }//end else
 }//addSlot
 
-void clockHandler2(){
+
+/*void clockHandler2(){
 	int timesCalled = 0;
 
 	if (DEBUG2 && debugflag2)
@@ -814,4 +816,6 @@ void clockHandler2(){
 	//}
 	
 	timesCalled++;
-}
+}*/
+
+

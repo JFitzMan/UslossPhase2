@@ -27,5 +27,5 @@ p1_quit(int pid)
 int
 check_io()
 {
-    return 0;
+    return 1;
 }

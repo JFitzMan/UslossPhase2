@@ -1,5 +1,10 @@
 
 #include "usloss.h"
+#include "message.h"
+#include "phase2.h" 
+#include <stdio.h>
+#include <string.h>
+
 #define DEBUG 0
 extern int debugflag;
 
@@ -27,5 +32,15 @@ p1_quit(int pid)
 int
 check_io()
 {
-    return 1;
+    mailbox* MailBoxTable = getMboxTable();
+    int toReturn = 0;
+    int i;
+
+    for (i = 0; i < 7; i ++){
+    	if (MailBoxTable[i].nextBlockedProc != NULL)
+    	{
+    		toReturn = 1;
+    	}
+    }
+    return toReturn;
 }

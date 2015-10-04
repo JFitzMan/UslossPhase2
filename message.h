@@ -1,5 +1,5 @@
 
-#define DEBUG2 1
+#define DEBUG2 0
 
 typedef struct mailSlot *slotPtr;
 typedef struct mailbox   mailbox;

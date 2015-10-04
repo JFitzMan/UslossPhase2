@@ -30,7 +30,7 @@ int waitDevice(int type, int unit, int *status);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 0;
+int debugflag2 = 1;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -382,6 +382,8 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 
     if (MailBoxTable[mbox_id].firstSlot == NULL){
       MailBoxTable[mbox_id].firstSlot = newSlot;
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): first slot created!\n");
     }
     else{
       slotPtr cur = MailBoxTable[mbox_id].firstSlot;
@@ -389,6 +391,8 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
         cur = cur->nextSlot;
       }
      cur->nextSlot = newSlot;
+     if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxSend(): Added new slot to the end\n");
     }
     if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxSend(): New slot allocated and message copied\n");
@@ -465,7 +469,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     unblockProc(processTable[getpid()].pidOfMessageSender);
     }
   }
-  else if (MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL)
+  else if (MailBoxTable[mbox_id].slotsInUse == 0 && MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL)
     {
       if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxReceive(): There is a process blocked on send, lets get that message!\n");

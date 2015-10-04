@@ -427,7 +427,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   }
 
   //there are no messages! Process gets blocked until one comes in
-  if (MailBoxTable[mbox_id].slotsInUse == 0){
+  if (MailBoxTable[mbox_id].slotsInUse == 0 && MailBoxTable[mbox_id].nextProcBlockedOnSend == NULL){
     processTable[getpid()].status = RECEIVE_BLOCKED;
     addProcToBlockedList(&processTable[getpid()], mbox_id);
 
@@ -456,8 +456,27 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     }
     else{
     unblockProc(processTable[getpid()].pidOfMessageSender);
+    }
   }
-  }
+  else if (MailBoxTable[mbox_id].nextProcBlockedOnSend != NULL)
+    {
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxReceive(): There is a process blocked on send, lets get that message!\n");
+      memcpy(msg_ptr, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
+      free(MailBoxTable[mbox_id].nextProcBlockedOnSend->message);
+      int pidToUnblock = MailBoxTable[mbox_id].nextProcBlockedOnSend->pid;
+      toReturn = MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize;
+
+      if (MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc == NULL){
+        if (DEBUG2 && debugflag2)
+          USLOSS_Console("MboxReceive(): No more procs blocked on send\n");
+        MailBoxTable[mbox_id].nextProcBlockedOnSend = NULL;
+      }
+      else{
+        MailBoxTable[mbox_id].nextProcBlockedOnSend = MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc;
+      }
+      unblockProc(pidToUnblock);
+    }
   //there is a message to receive waiting in the box
   else{
     //copy the message from the slot, free the slot
@@ -665,6 +684,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
         USLOSS_Console("MboxCondReceive(): There is a process blocked on send, and we just freed a slot!\n");
       MboxSend(mbox_id, MailBoxTable[mbox_id].nextProcBlockedOnSend->message, MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize);
       int pidToUnblock = MailBoxTable[mbox_id].nextProcBlockedOnSend->pid;
+      toReturn = MailBoxTable[mbox_id].nextProcBlockedOnSend->messageSize;
       if (MailBoxTable[mbox_id].nextProcBlockedOnSend->nextProc == NULL){
         if (DEBUG2 && debugflag2)
           USLOSS_Console("MboxCondReceive(): No more procs blocked on send\n");

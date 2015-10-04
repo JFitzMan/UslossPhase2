@@ -116,6 +116,7 @@ int start1(char *arg)
 	
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
 	USLOSS_IntVec[USLOSS_TERM_INT] = termHandler;
+	USLOSS_IntVec[USLOSS_DISK_INT] = diskHandler;
 	enableInterrupts();
 
     
@@ -764,26 +765,33 @@ int waitDevice(int type, int unit, int *status){
 	int result;
 	char buffer[50];
 	
-	//clockHandler(); //Manually calling clockHandler for now until clock interrupts are turned on (?)
-
 	switch(type){
 		case USLOSS_CLOCK_DEV:
-			result = MboxReceive(unit, buffer, 50);
+			result = MboxReceive(clockMboxID, buffer, 50); // 0 is always the clock mailbox
 			if (DEBUG2 && debugflag2)
 				USLOSS_Console("waitDevice(): Recieve successful!\n");
 			USLOSS_DeviceInput(type, unit, status);
-      if (result == -3) return -1; else return 0;
+			if (result == -3) return -1; 
+			else return 0;
 		//cases for Terminal and Disk
-    case USLOSS_TERM_DEV:
-      result = MboxReceive(termMboxID[unit], buffer, 50);
-      if (DEBUG2 && debugflag2)
-        USLOSS_Console("waitDevice(): Recieve successful!\n");
-        USLOSS_DeviceInput(type, unit, status);        
-        return 0;
+		case USLOSS_TERM_DEV:
+			result = MboxReceive(termMboxID[unit], buffer, 50);
+			if (DEBUG2 && debugflag2)
+				USLOSS_Console("waitDevice(): Recieve successful!\n");
+			USLOSS_DeviceInput(type, unit, status);        
+			if (result == -3) return -1;
+			else return 0;
+		case USLOSS_DISK_DEV:
+			result = MboxReceive(diskMboxID[unit], buffer, 50);
+			if (DEBUG2 && debugflag2)
+				USLOSS_Console("waitDevice(): Recieve successful!\n");
+			USLOSS_DeviceInput(type, unit, status);        
+			if (result == -3) return -1;
+			else return 0;
 		default:
-			return 0;
-			
+			break;			
 	}
+	
 	return -2;
 }
 

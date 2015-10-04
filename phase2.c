@@ -696,7 +696,7 @@ int waitDevice(int type, int unit, int *status){
 			if (DEBUG2 && debugflag2)
 				USLOSS_Console("waitDevice(): Recieve successful!\n");
 			USLOSS_DeviceInput(type, unit, status);
-			return 0;
+      if (result == -3) return -1; else return 0;
 		//cases for Terminal and Disk
     case USLOSS_TERM_DEV:
       result = MboxReceive(termMboxID[unit], buffer, 50);

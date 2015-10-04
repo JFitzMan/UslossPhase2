@@ -4,6 +4,7 @@
 #include "message.h"
 
 extern int debugflag2;
+int timesCalled = 0;
 
 /* an error method to handle invalid syscalls */
 void nullsys(sysargs *args)
@@ -15,18 +16,16 @@ void nullsys(sysargs *args)
 
 void clockHandler2(int dev, int unit)
 {
+	timesCalled++;
 
    if (DEBUG2 && debugflag2)
       USLOSS_Console("clockHandler2(): called\n");
-
-	int timesCalled = 0;
 	
-	//if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
+	if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
 		MboxCondSend(0, "a", 50);
-	//
-	
-	timesCalled++;
-	  
+		timesCalled = 0;
+	}
+		  
 
 } /* clockHandler */
 

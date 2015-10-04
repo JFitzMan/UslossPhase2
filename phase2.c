@@ -680,8 +680,8 @@ int waitDevice(int type, int unit, int *status){
 	switch(type){
 		case USLOSS_CLOCK_DEV:
 			result = MboxReceive(unit, buffer, 50);
-      if (DEBUG2 && debugflag2)
-          USLOSS_Console("waitDevice(): Recieve successful!\n");
+			if (DEBUG2 && debugflag2)
+				USLOSS_Console("waitDevice(): Recieve successful!\n");
 			USLOSS_DeviceInput(type, unit, status);
 			return 0;
 		//cases for Terminal and Disk

@@ -61,7 +61,6 @@ int XXp2(char *arg)
   result = MboxReceive(mbox_id, buffer, 100);
   printf("XXp2(): after receipt of message, result = %d\n", result);
   printf("        message = `%s'\n", buffer);
-
   quit(-4);
   return 0;
 } /* XXp2 */

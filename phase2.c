@@ -98,11 +98,13 @@ int start1(char *arg)
       MailSlotTable[i].mboxID = EMPTY; 
     }    
 	
-    // Initialize USLOSS_IntVec and system call handlers, etc...
+    
 	
 	
 	// Create mailboxes for devices: 1 for clock, 4 for terminals, 2 for disks
 	// Seven mailboxes in total
+
+  // Initialize USLOSS_IntVec and system call handlers, etc...
 
 	clockMboxID = MboxCreate(0, 50); // Zero slot mailbox
 	for(i =0; i<USLOSS_TERM_UNITS; i++)
@@ -158,7 +160,7 @@ int MboxCreate(int slots, int slot_size)
   //what's weird is this still works for test02. Maybe a bug on patricks end
   int i;
   int newMailBoxID = -1;
-  for( i=nextMailBoxID; i < MAXMBOX; i++){
+  for( i=0; i < MAXMBOX; i++){
     if (MailBoxTable[i].mboxID == EMPTY){
       newMailBoxID = i;
       nextMailBoxID++;

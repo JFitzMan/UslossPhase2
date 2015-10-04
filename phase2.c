@@ -813,3 +813,6 @@ void clockHandler2(int dev, int unit){
 	timesCalled++;
 }
 
+mailbox* getMboxTable(){
+	return &MailBoxTable;
+}

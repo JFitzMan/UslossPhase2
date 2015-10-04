@@ -44,6 +44,10 @@ struct mailSlot MailSlotTable[MAXSLOTS];
 int nextMailBoxID = 0;
 int totalSlotsInUse = 0;
 
+int clockMboxID;
+int termMboxID[USLOSS_TERM_UNITS];
+int diskMboxID[USLOSS_DISK_UNITS];
+
 // also need array of function ptrs to system call 
 // handlers, ...
 
@@ -99,9 +103,7 @@ int start1(char *arg)
 	
 	// Create mailboxes for devices: 1 for clock, 4 for terminals, 2 for disks
 	// Seven mailboxes in total
-	int clockMboxID;
-	int termMboxID[USLOSS_TERM_UNITS];
-	int diskMboxID[USLOSS_DISK_UNITS];
+
 	clockMboxID = MboxCreate(0, 50); // Zero slot mailbox
 	for(i =0; i<USLOSS_TERM_UNITS; i++)
 		termMboxID[i] = MboxCreate(0, 50);
@@ -111,7 +113,8 @@ int start1(char *arg)
 
 	
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
-  enableInterrupts();
+	USLOSS_IntVec[USLOSS_TERM_INT] = termHandler;
+	enableInterrupts();
 
     
     // Create a process for start2, then block on a join until start2 quits

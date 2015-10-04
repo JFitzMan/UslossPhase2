@@ -30,7 +30,7 @@ int waitDevice(int type, int unit, int *status);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 1;
+int debugflag2 = 0;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -296,7 +296,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
   processTable[getpid()].pid = getpid();
 
   //check that arguments are valid
-  if (msg_size > MAX_MESSAGE){
+  if (msg_size > MailBoxTable[mbox_id].slotSize){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): msg is too large!\n");
     enableInterrupts();
@@ -431,8 +431,10 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     processTable[getpid()].status = RECEIVE_BLOCKED;
     addProcToBlockedList(&processTable[getpid()], mbox_id);
 
-    if (DEBUG2 && debugflag2)
+    if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxReceive(): No messages to receive! Blocking...\n");
+        USLOSS_Console("MboxReceive(): next blocked proc pid: %d", MailBoxTable[mbox_id].nextBlockedProc->pid);
+      }
     blockMe(11);
     disableInterrupts();
 
@@ -449,7 +451,12 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxReceive(): Unblocking sender, pid %d\n", processTable[getpid()].pidOfMessageSender);
     //unblock the sending process
+    if( processTable[getpid()].pidOfMessageSender == 1){
+
+    }
+    else{
     unblockProc(processTable[getpid()].pidOfMessageSender);
+  }
   }
   //there is a message to receive waiting in the box
   else{
@@ -554,7 +561,8 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 	
 	//check to make sure system has enough slots left
 	else if (totalSlotsInUse >= MAXSLOTS){
-		USLOSS_Console("MBoxCondSend(): No slots left in system! Returning -2...\n");
+    if (DEBUG2 && debugflag2)
+		  USLOSS_Console("MBoxCondSend(): No slots left in system! Returning -2...\n");
 		enableInterrupts();
 		return -2;
 	}
@@ -567,6 +575,8 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 	}
 	else{
 		//get new slot and add it to the list of mail slots
+    if (DEBUG2 && debugflag2)
+      USLOSS_Console("MboxCondSend(): Adding new slot to mailbox\n");
 		slotPtr newSlot = getEmptySlot(msg_size, mbox_id);
 		memcpy(newSlot->message, msg_ptr, msg_size);
 
@@ -688,8 +698,14 @@ int waitDevice(int type, int unit, int *status){
 			USLOSS_DeviceInput(type, unit, status);
 			return 0;
 		//cases for Terminal and Disk
+    case USLOSS_TERM_DEV:
+      result = MboxReceive(termMboxID[unit], buffer, 50);
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("waitDevice(): Recieve successful!\n");
+        USLOSS_DeviceInput(type, unit, status);        
+        return 0;
 		default:
-			return -1;
+			return 0;
 			
 	}
 	return -2;

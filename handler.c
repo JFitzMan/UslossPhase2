@@ -2,6 +2,7 @@
 #include <phase1.h>
 #include <phase2.h>
 #include "message.h"
+#include <usloss.h>
 
 extern int debugflag2;
 int timesCalled = 0;
@@ -22,7 +23,7 @@ void clockHandler2(int dev, int unit)
       USLOSS_Console("clockHandler2(): called\n");
 	
 	if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
-		MboxCondSend(0, "a", 50);
+		MboxCondSend(clockMboxID, "a", 50);
 		timesCalled = 0;
 	}
 		  
@@ -43,8 +44,15 @@ void diskHandler(int dev, int unit)
 void termHandler(int dev, int unit)
 {
 
-   if (DEBUG2 && debugflag2)
+  if (DEBUG2 && debugflag2)
       USLOSS_Console("termHandler(): called\n");
+  int status;
+  USLOSS_DeviceInput(USLOSS_TERM_DEV, unit, &status);
+  char buffer[1];
+  buffer[0] = (char)USLOSS_TERM_STAT_CHAR(status);
+  //USLOSS_DeviceInput(USLOSS_TERM_DEV, unit, &status);
+  printf("%c, %d, %d\n", (char)USLOSS_TERM_STAT_CHAR(status), USLOSS_TERM_STAT_XMIT(status),USLOSS_TERM_STAT_RECV(status));
+  MboxCondSend(termMboxID[unit], buffer, 1);  
 
 
 } /* termHandler */

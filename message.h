@@ -49,6 +49,7 @@ extern mailbox* getMboxTable();
 extern int termMboxID[USLOSS_TERM_UNITS];
 extern int clockMboxID;
 extern int diskMboxID[USLOSS_DISK_UNITS];
+extern int lastStatusRead;
 
 #define EMPTY -1
 #define READY 1

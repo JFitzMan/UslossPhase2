@@ -47,6 +47,7 @@ int totalSlotsInUse = 0;
 int clockMboxID;
 int termMboxID[USLOSS_TERM_UNITS];
 int diskMboxID[USLOSS_DISK_UNITS];
+int lastStatusRead = 0;
 
 // also need array of function ptrs to system call 
 // handlers, ...
@@ -778,7 +779,7 @@ int waitDevice(int type, int unit, int *status){
       result = MboxReceive(termMboxID[unit], buffer, 50);
       if (DEBUG2 && debugflag2)
         USLOSS_Console("waitDevice(): Recieve successful!\n");
-        USLOSS_DeviceInput(type, unit, status);        
+        *status = lastStatusRead;      
         return 0;
 		default:
 			return 0;
@@ -833,6 +834,7 @@ void enableInterrupts()
         /* We ARE in kernel mode */
         USLOSS_PsrSet( USLOSS_PsrGet() | USLOSS_PSR_CURRENT_INT );
 } /* enableInterrupts */
+
 
 void addProcToBlockedList(mboxProcPtr toAdd, int mbox_id){
   //no other procs on list, easy add

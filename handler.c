@@ -46,12 +46,12 @@ void termHandler(int dev, int unit)
 
   if (DEBUG2 && debugflag2)
       USLOSS_Console("termHandler(): called\n");
-  int status;
-  USLOSS_DeviceInput(USLOSS_TERM_DEV, unit, &status);
+  //int status;
+  USLOSS_DeviceInput(USLOSS_TERM_DEV, unit, &lastStatusRead);
   char buffer[1];
-  buffer[0] = (char)USLOSS_TERM_STAT_CHAR(status);
+  buffer[0] = (char)USLOSS_TERM_STAT_CHAR(lastStatusRead);
   //USLOSS_DeviceInput(USLOSS_TERM_DEV, unit, &status);
-  printf("%c, %d, %d\n", (char)USLOSS_TERM_STAT_CHAR(status), USLOSS_TERM_STAT_XMIT(status),USLOSS_TERM_STAT_RECV(status));
+  //printf("%c, %d, %d\n", (char)USLOSS_TERM_STAT_CHAR(lastStatusRead), USLOSS_TERM_STAT_XMIT(status),USLOSS_TERM_STAT_RECV(status));
   MboxCondSend(termMboxID[unit], buffer, 1);  
 
 

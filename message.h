@@ -45,6 +45,8 @@ union psrValues {
     unsigned int integerPart;
 };
 
+extern mailbox* getMboxTable();
+
 #define EMPTY -1
 #define READY 1
 #define SEND_BLOCKED 2

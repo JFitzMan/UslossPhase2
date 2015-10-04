@@ -807,6 +807,6 @@ void addSlot(slotPtr *front, slotPtr toAdd){
 }//addSlot
 
 mailbox* getMboxTable(){
-	return &MailBoxTable;
+	return MailBoxTable;
 }
 

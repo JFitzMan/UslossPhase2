@@ -30,7 +30,7 @@ int waitDevice(int type, int unit, int *status);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 0;
+int debugflag2 = 1;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];

@@ -320,10 +320,17 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
-    //remove the process from the list of blocked processes
-    //MailBoxTable[mbox_id].nextBlockedProc
+
     unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
-    //blockMe(12);
+    //remove the process from the list of blocked processes
+    if (MailBoxTable[mbox_id].nextBlockedProc->nextProc == NULL){
+      MailBoxTable[mbox_id].nextBlockedProc = NULL;
+    }
+    else{
+      MailBoxTable[mbox_id].nextBlockedProc = MailBoxTable[mbox_id].nextBlockedProc->nextProc;
+    }
+
+
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): Message sent successfully\n");
   }

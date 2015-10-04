@@ -30,7 +30,7 @@ int waitDevice(int type, int unit, int *status);
 
 /* -------------------------- Globals ------------------------------------- */
 
-int debugflag2 = 1;
+int debugflag2 = 0;
 
 // the mail boxes 
 mailbox MailBoxTable[MAXMBOX];
@@ -107,6 +107,8 @@ int start1(char *arg)
 		termMboxID[i] = MboxCreate(0, 50);
 	diskMboxID[0] = MboxCreate(0, 50);
 	diskMboxID[1] = MboxCreate(0, 50);
+
+
 	
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
   enableInterrupts();
@@ -175,6 +177,8 @@ int MboxCreate(int slots, int slot_size)
   MailBoxTable[newMailBoxID].slotSize = slot_size;
   MailBoxTable[newMailBoxID].slotsInUse = 0;
   MailBoxTable[newMailBoxID].firstSlot = NULL;
+  MailBoxTable[newMailBoxID].nextBlockedProc = NULL;
+
   if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxCreate(): initializing new mailbox\n");
 
@@ -404,6 +408,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   disableInterrupts();
   inKernelMode("MboxReceive");
   processTable[getpid()].pid = getpid();
+  processTable[getpid()].nextProc = NULL;
   int toReturn = -1;
   //check that arguments are valid
   if (msg_size < MailBoxTable[mbox_id].slotSize && msg_ptr != NULL){
@@ -529,7 +534,17 @@ int MboxCondSend(int mbox_id, void *msg_ptr, int msg_size){
 		memcpy(MailBoxTable[mbox_id].nextBlockedProc->message, msg_ptr, msg_size);
 		if (DEBUG2 && debugflag2)
 			USLOSS_Console("MboxCondSend(): unblocking process that now has the message, pid %d\n", MailBoxTable[mbox_id].nextBlockedProc->pid);
+
+
 		unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
+
+    if (MailBoxTable[mbox_id].nextBlockedProc->nextProc == NULL ){
+      MailBoxTable[mbox_id].nextBlockedProc = NULL;
+    }
+    else{
+      MailBoxTable[mbox_id].nextBlockedProc = MailBoxTable[mbox_id].nextBlockedProc->nextProc;
+    }
+
 		if (DEBUG2 && debugflag2)
 			USLOSS_Console("MboxCondSend(): Message sent successfully\n");
 	}

@@ -9,4 +9,7 @@
 /libphase2.a
 /phase2-v1.0.pdf
 /test??.txt
-/p1.o
+/test??
+/test??.o
+/*.o
+/term?.out

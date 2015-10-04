@@ -226,6 +226,7 @@ int MboxRelease(int mailboxID){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxRelease(): zapping procs blocked on send\n");
     mboxProcPtr cur = MailBoxTable[mailboxID].nextProcBlockedOnSend;
+    mboxProcPtr next;
     while (cur != NULL){
       cur->messageSize = -3;
       cur = cur->nextProc;
@@ -233,8 +234,9 @@ int MboxRelease(int mailboxID){
     //unblock the procs that were waiting on the mailbox
     cur = MailBoxTable[mailboxID].nextProcBlockedOnSend;
     while (cur != NULL){
+      next = cur->nextProc;
       unblockProc(cur->pid);
-      cur = cur->nextProc;
+      cur = next;
     }
     MailBoxTable[mailboxID].nextProcBlockedOnSend = NULL;
   }

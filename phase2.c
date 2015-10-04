@@ -223,6 +223,8 @@ int MboxRelease(int mailboxID){
 
   //there are procs blocked on send, "zap" them before releasing
   if (MailBoxTable[mailboxID].nextProcBlockedOnSend != NULL){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxRelease(): zapping procs blocked on send\n");
     mboxProcPtr cur = MailBoxTable[mailboxID].nextProcBlockedOnSend;
     while (cur != NULL){
       cur->messageSize = -3;
@@ -240,6 +242,8 @@ int MboxRelease(int mailboxID){
   //same thing as above, but for procs blocked on receive
 
   if (MailBoxTable[mailboxID].nextBlockedProc != NULL){
+    if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxRelease(): zapping procs blocked on recieve\n");
     mboxProcPtr cur = MailBoxTable[mailboxID].nextBlockedProc;
     while (cur != NULL){
       cur->messageSize = -3;
@@ -247,9 +251,15 @@ int MboxRelease(int mailboxID){
     }
     //unblock the procs that were waiting on the mailbox
     cur = MailBoxTable[mailboxID].nextBlockedProc;
+    mboxProcPtr next;
+    int i = 1;
     while (cur != NULL){
+      next = cur->nextProc;
       unblockProc(cur->pid);
-      cur = cur->nextProc;
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxRelease(): Procs unblocked = %d\n", i);
+      i++;
+      cur = next;
     }
     MailBoxTable[mailboxID].nextBlockedProc = NULL;
   }
@@ -294,6 +304,10 @@ int MboxRelease(int mailboxID){
 int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
 {
 
+  if (processTable[getpid()].messageSize == -3){
+      //MailBoxTable[mbox_id].mboxID = EMPTY;
+      return -1;
+    }
   disableInterrupts();
   processTable[getpid()].pid = getpid();
 
@@ -426,13 +440,19 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   processTable[getpid()].pid = getpid();
   processTable[getpid()].nextProc = NULL;
   int toReturn = -1;
+
+  if (processTable[getpid()].messageSize == -3){
+      //MailBoxTable[mbox_id].mboxID = EMPTY;
+      return -1;
+    }
   //check that arguments are valid
   if (msg_size < MailBoxTable[mbox_id].slotSize && msg_ptr != NULL && MailBoxTable[mbox_id].firstSlot != NULL){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxReceive(): invalid message size for receive!\n");
     enableInterrupts();
     return -1;
-  }else if (MailBoxTable[mbox_id].mboxID == EMPTY){
+  }
+  if (MailBoxTable[mbox_id].mboxID == EMPTY){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxReceive(): mbox ID does not exist!!\n");
     enableInterrupts();
@@ -442,18 +462,39 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   //there are no messages! Process gets blocked until one comes in
   if (MailBoxTable[mbox_id].slotsInUse == 0 && MailBoxTable[mbox_id].nextProcBlockedOnSend == NULL){
     processTable[getpid()].status = RECEIVE_BLOCKED;
-    addProcToBlockedList(&processTable[getpid()], mbox_id);
+    
 
     if (DEBUG2 && debugflag2){
         USLOSS_Console("MboxReceive(): No messages to receive! Blocking...\n");
-        USLOSS_Console("MboxReceive(): next blocked proc pid: %d", MailBoxTable[mbox_id].nextBlockedProc->pid);
       }
+
+      if (MailBoxTable[mbox_id].nextBlockedProc == NULL){
+      MailBoxTable[mbox_id].nextBlockedProc = &processTable[getpid()];
+      if (DEBUG2 && debugflag2)
+        USLOSS_Console("MboxReceive(): first proc to block on revieve\n");
+    }
+    else{
+      mboxProcPtr cur = MailBoxTable[mbox_id].nextBlockedProc;
+      while (cur->nextProc != NULL){
+        cur = cur->nextProc;
+      }
+     cur->nextProc = &processTable[getpid()];
+     if (DEBUG2 && debugflag2){
+        USLOSS_Console("MboxReceive(): added to end of blocked proc list\n");
+        cur = MailBoxTable[mbox_id].nextBlockedProc;
+        USLOSS_Console("MboxRecieve(): BLocked list:\n");
+        while(cur != NULL){
+          USLOSS_Console("MboxRecieve():          %d\n", cur->pid);
+          cur = cur->nextProc;
+        }
+      }
+    }
     blockMe(11);
     disableInterrupts();
 
 
     if (processTable[getpid()].messageSize == -3){
-
+      //MailBoxTable[mbox_id].mboxID = EMPTY;
       return -3;
     }
 

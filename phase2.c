@@ -150,7 +150,7 @@ int MboxCreate(int slots, int slot_size)
 {
   disableInterrupts();
   //check to make sure slots or slot_size doesnt exceed constants
-  if (slots > MAXSLOTS || slot_size > MAX_MESSAGE){
+  if (slots > MAXSLOTS || slot_size > MAX_MESSAGE || slot_size < 0 || slots < 0){
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxCreate(): Unable to create mmailbox, parameters too large!\n");
     return -1;

@@ -37,6 +37,8 @@ extern int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_max_size);
  */
 extern int waitDevice(int type, int unit, int *status);
 
+extern mailbox* getMboxTable();
+
 //checks to see if the processor is in kernel mode
 int inKernelMode(char *procName);
 

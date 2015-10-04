@@ -25,7 +25,7 @@ slotPtr getEmptySlot(int size, int mbox_id);
 void addSlot(slotPtr *front, slotPtr toAdd);
 int MboxRelease(int mailboxID);
 int waitDevice(int type, int unit, int *status);
-void clockHandler2();
+void clockHandler2(int dev, int unit);
 
 /* -------------------------- Globals ------------------------------------- */
 
@@ -802,13 +802,14 @@ void addSlot(slotPtr *front, slotPtr toAdd){
   }//end else
 }//addSlot
 
-/*void clockHandler2(){
+void clockHandler2(int dev, int unit){
+	USLOSS_Console("clockHandler2(): called\n");
+	
 	int timesCalled = 0;
 	
 	//if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
 		MboxCondSend(0, "a", 50);
-	//}
 	
 	timesCalled++;
-}*/
+}
 

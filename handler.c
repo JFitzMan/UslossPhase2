@@ -23,7 +23,7 @@ void clockHandler2(int dev, int unit)
 	
 	//if(timesCalled == 5){ //Supposed to only send at 100ms, or every 5 interrupts.
 		MboxCondSend(0, "a", 50);
-	//}
+	//
 	
 	timesCalled++;
 	  

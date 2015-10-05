@@ -32,10 +32,12 @@ p1_quit(int pid)
 int
 check_io()
 {
-    mailbox* MailBoxTable = getMboxTable();
+    mailbox* MailBoxTable = getMboxTable(); //Gets the mailbox table from phase2.c
     int toReturn = 0;
     int i;
 
+	//Checks first seven mailboxes (The I/O device mailboxes)
+	//If any process is blocked on them keep the program going
     for (i = 0; i < 7; i ++){
     	if (MailBoxTable[i].nextBlockedProc != NULL)
     	{

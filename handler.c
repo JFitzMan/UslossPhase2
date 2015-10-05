@@ -62,9 +62,9 @@ void syscallHandler(int dev, struct sysargs *arg)
 {
   if (DEBUG2 && debugflag2)
     USLOSS_Console("syscallHandler(): called\n");
-  if (arg->number > MAXSYSCALLS-1 || arg->number < 0){
-     if (DEBUG2 && debugflag2)
-      USLOSS_Console("syscallHandler(): system call out of range!\n");
+  if (arg->number >= MAXSYSCALLS || arg->number < 0){
+      USLOSS_Console("syscallHandler(): sys number %d is wrong.  Halting...\n", arg->number);
+      USLOSS_Halt(1);
   }
   else{
     sys_vec[arg->number](arg);

@@ -62,10 +62,12 @@ void syscallHandler(int dev, struct sysargs *arg)
 {
   if (DEBUG2 && debugflag2)
     USLOSS_Console("syscallHandler(): called\n");
+  //check for valid syscall number
   if (arg->number >= MAXSYSCALLS || arg->number < 0){
       USLOSS_Console("syscallHandler(): sys number %d is wrong.  Halting...\n", arg->number);
       USLOSS_Halt(1);
   }
+  //activate syscall
   else{
     sys_vec[arg->number](arg);
   }

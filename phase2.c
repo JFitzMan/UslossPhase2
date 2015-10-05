@@ -343,6 +343,11 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): process waiting on receive! Placing message in proc table slot..\n");
     //initialize the proper fields in the process table entry
+    if (MailBoxTable[mbox_id].nextBlockedProc->messageSize < msg_size){
+      MailBoxTable[mbox_id].nextBlockedProc->messageSize = -1;
+      unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
+      return -1;
+    }
     MailBoxTable[mbox_id].nextBlockedProc->message = malloc(msg_size);
     MailBoxTable[mbox_id].nextBlockedProc->messageSize = msg_size;
     MailBoxTable[mbox_id].nextBlockedProc->pidOfMessageSender = getpid();
@@ -509,6 +514,10 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
     if (processTable[getpid()].messageSize == -3){
       //MailBoxTable[mbox_id].mboxID = EMPTY;
       return -3;
+    }
+    else if (processTable[getpid()].messageSize == -1){
+      //MailBoxTable[mbox_id].mboxID = EMPTY;
+      return -1;
     }
 
     if (DEBUG2 && debugflag2)

@@ -10,7 +10,7 @@ int timesCalled = 0;
 /* an error method to handle invalid syscalls */
 void nullsys(sysargs *args)
 {
-    USLOSS_Console("nullsys(): Invalid syscall. Halting...\n");
+    USLOSS_Console("nullsys(): Invalid syscall %d. Halting...\n", args->number);
     USLOSS_Halt(1);
 } /* nullsys */
 
@@ -58,11 +58,18 @@ void termHandler(int dev, int unit)
 } /* termHandler */
 
 
-void syscallHandler(int dev, int unit)
+void syscallHandler(int dev, struct sysargs *arg)
 {
-
-   if (DEBUG2 && debugflag2)
-      USLOSS_Console("syscallHandler(): called\n");
+  if (DEBUG2 && debugflag2)
+    USLOSS_Console("syscallHandler(): called\n");
+  if (arg->number > MAXSYSCALLS-1 || arg->number < 0){
+     if (DEBUG2 && debugflag2)
+      USLOSS_Console("syscallHandler(): system call out of range!\n");
+  }
+  else{
+    sys_vec[arg->number](arg);
+  }
+  
 
 
 } /* syscallHandler */

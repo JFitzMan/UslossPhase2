@@ -52,6 +52,8 @@ int lastStatusRead = 0;
 // also need array of function ptrs to system call 
 // handlers, ...
 
+void (*sys_vec[MAXSYSCALLS])(sysargs *args);
+
 
 
 
@@ -121,6 +123,9 @@ int start1(char *arg)
 	USLOSS_IntVec[USLOSS_TERM_INT] = termHandler;
 	USLOSS_IntVec[USLOSS_DISK_INT] = diskHandler;
   USLOSS_IntVec[USLOSS_SYSCALL_INT] = syscallHandler;
+
+  for(i =0; i<MAXSYSCALLS; i++)
+    sys_vec[i] = nullsys;
 
 	enableInterrupts();
 

@@ -57,4 +57,7 @@ typedef struct sysargs
 
 extern void             (*sys_vec[])(sysargs *args);
 
+typedef struct sysargs systemArgs;
+
+
 #endif

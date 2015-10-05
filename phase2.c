@@ -54,6 +54,8 @@ int lastStatusRead = 0;
 
 
 
+
+
 /* -------------------------- Functions ----------------------------------- */
 
 /* ------------------------------------------------------------------------
@@ -118,6 +120,8 @@ int start1(char *arg)
 	USLOSS_IntVec[USLOSS_CLOCK_INT] = clockHandler2;
 	USLOSS_IntVec[USLOSS_TERM_INT] = termHandler;
 	USLOSS_IntVec[USLOSS_DISK_INT] = diskHandler;
+  USLOSS_IntVec[USLOSS_SYSCALL_INT] = syscallHandler;
+
 	enableInterrupts();
 
     

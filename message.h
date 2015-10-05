@@ -1,9 +1,10 @@
 
-#define DEBUG2 1
+#define DEBUG2 0
 
 typedef struct mailSlot *slotPtr;
 typedef struct mailbox   mailbox;
 typedef struct mboxProc *mboxProcPtr;
+typedef struct sysargs systemArgs;
 
 struct mailbox {
     int          mboxID;

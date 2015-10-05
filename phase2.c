@@ -343,7 +343,7 @@ int MboxSend(int mbox_id, void *msg_ptr, int msg_size)
     if (DEBUG2 && debugflag2)
         USLOSS_Console("MboxSend(): process waiting on receive! Placing message in proc table slot..\n");
     //initialize the proper fields in the process table entry
-    if (MailBoxTable[mbox_id].nextBlockedProc->messageSize < msg_size){
+    if (MailBoxTable[mbox_id].nextBlockedProc->messageSize <= msg_size){
       MailBoxTable[mbox_id].nextBlockedProc->messageSize = -1;
       unblockProc(MailBoxTable[mbox_id].nextBlockedProc->pid);
       return -1;
@@ -480,6 +480,7 @@ int MboxReceive(int mbox_id, void *msg_ptr, int msg_size)
   //there are no messages! Process gets blocked until one comes in
   if (MailBoxTable[mbox_id].slotsInUse == 0 && MailBoxTable[mbox_id].nextProcBlockedOnSend == NULL){
     processTable[getpid()].status = RECEIVE_BLOCKED;
+    processTable[getpid()].messageSize = msg_size;
     
 
     if (DEBUG2 && debugflag2){
@@ -709,7 +710,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
 	processTable[getpid()].pid = getpid();
 	int toReturn = -1;
 	//check that arguments are valid
-	if (msg_size < MailBoxTable[mbox_id].slotSize && msg_ptr != NULL){
+	if (MailBoxTable[mbox_id].firstSlot != NULL && msg_size < MailBoxTable[mbox_id].firstSlot->msg_size && msg_ptr != NULL){
 		if (DEBUG2 && debugflag2)
 			USLOSS_Console("MboxCondReceive(): invalid message size for receive!\n");
 		enableInterrupts();
@@ -745,6 +746,7 @@ int MboxCondReceive(int mbox_id, void *msg_ptr, int msg_size){
 		}
 		//decrement slotsInUse
 		MailBoxTable[mbox_id].slotsInUse--;
+    totalSlotsInUse --;
 		//free the box, grab the return value first
 		toReturn = toFree->msg_size;
 		toFree->mboxID = EMPTY;

@@ -1,5 +1,8 @@
 /*
- * These are the definitions for phase 2 of the project
+ *  These are the definitions for phase 2 of the project
+ *  CSC 452, Fall 2015
+ *  Jordan Fitzpatrick
+ *  Sean Gallardo
  */
 
 #ifndef _PHASE2_H

@@ -4,6 +4,9 @@
    University of Arizona
    Computer Science 452
 
+   Fall 2015
+   Jordan Fitzpatrick
+   Sean Gallardo
    ------------------------------------------------------------------------ */
 
 #include <phase1.h>

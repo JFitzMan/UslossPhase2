@@ -1,3 +1,9 @@
+/*
+ *  CSC 452, Fall 2015
+ *  Jordan Fitzpatrick
+ *  Sean Gallardo
+*/
+
 
 #include "usloss.h"
 #include "message.h"
